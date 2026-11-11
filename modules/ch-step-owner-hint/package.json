@@ -1,8 +1,16 @@
 {
-  "name": "@SCOPE/ch-step-owner-hint",
+  "name": "@countinghouse/ch-step-owner-hint",
   "version": "0.1.0",
   "description": "countinghouse step module: who might know about a CI failure, as GitHub logins only: the author of the commit where it first appeared and of recent changes.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mchen6/ch-packs.git",
+    "directory": "modules/ch-step-owner-hint"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22.16"
   },

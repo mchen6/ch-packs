@@ -1,7 +1,8 @@
 'use strict';
 // Every workspace is named <SCOPE>/<its directory> (Global Constraints: the
-// scope is one constant until Matt names it), its directory starts with ch-,
-// and every module declares its role.
+// scope is one constant), its directory starts with ch-, every module
+// declares its role, and every package carries what npm trusted publishing
+// needs: the exact repository URL and public access (docs/publishing.md).
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
@@ -14,7 +15,7 @@ const workspaces = ['modules', 'packages'].flatMap((top) =>
     .filter((e) => e.isDirectory() && fs.existsSync(path.join(ROOT, top, e.name, 'package.json')))
     .map((e) => ({top, dir: e.name, pkg: JSON.parse(fs.readFileSync(path.join(ROOT, top, e.name, 'package.json'), 'utf8'))})));
 
-test('the scope is one constant, an npm scope (@SCOPE until Matt names it)', () => {
+test('the scope is one constant, an npm scope (@countinghouse until Matt names it)', () => {
   assert.match(SCOPE, /^@[A-Za-z0-9][A-Za-z0-9-]*$/);
   // The rename is one search-and-replace of the scope, constant included.
   assert.strictEqual(fs.readFileSync(path.join(ROOT, 'scripts', 'lib', 'scope.js'), 'utf8').includes(`SCOPE: '${SCOPE}'`), true);
@@ -25,6 +26,15 @@ test('every workspace is named <SCOPE>/<its directory>, with the ch- prefix', ()
     assert.match(dir, /^ch-[a-z0-9-]+$/, `${top}/${dir}`);
     assert.strictEqual(pkg.name, `${SCOPE}/${dir}`, `${top}/${dir}`);
     assert.strictEqual(pkg.license, 'Apache-2.0', `${top}/${dir}`);
+  }
+});
+
+test('every workspace names this repository exactly and publishes as public (trusted publishing)', () => {
+  for (const {top, dir, pkg} of workspaces) {
+    assert.deepStrictEqual(pkg.repository,
+      {type: 'git', url: 'https://github.com/mchen6/ch-packs.git', directory: `${top}/${dir}`}, `${top}/${dir}`);
+    assert.deepStrictEqual(pkg.publishConfig, {access: 'public'}, `${top}/${dir}`);
+    assert.notStrictEqual(pkg.private, true, `${top}/${dir}`);
   }
 });
 

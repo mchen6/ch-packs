@@ -1,8 +1,16 @@
 {
-  "name": "@SCOPE/ch-step-redact",
+  "name": "@countinghouse/ch-step-redact",
   "version": "0.1.0",
   "description": "countinghouse step module: masks secrets and personal data in text lines before any line can reach a result.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mchen6/ch-packs.git",
+    "directory": "modules/ch-step-redact"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22.16"
   },

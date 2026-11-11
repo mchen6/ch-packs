@@ -147,7 +147,7 @@ need as ordinary features, each a reviewed PR on its own branch:
 
 The pack family is a separate repository, private until Matt says
 otherwise: this repository, `ch-packs`. Packages live under an npm scope
-Matt owns (Matt, 2026-11-11 10:38; name not chosen yet, written `@SCOPE`),
+Matt owns, `@countinghouse` (Matt, 2026-11-11 10:38 for an owned scope; the name on 2026-11-11 ~17:00),
 and keep the `ch-` prefix inside it (tech's call) so names stay
 recognisable; creating the organisation and publishing are Matt's, on his
 timing. Names: `ch-local` (the launcher), `ch-access-<server>`,
@@ -710,8 +710,11 @@ the shim, the floor question returns to Matt.
 5. ~~Pack order swap~~: decided 10:38, 1, 2, 4, 3, 5, 6, 7, 8.
 6. ~~Upgrade policy~~: decided 10:38, "easy, opt-in automatic" as section 2
    implements it.
-8. ~~npm scope~~: decided 10:38, an owned scope, name not chosen; Matt
-   creates the organisation and publishes on his timing. The `countinghouse` package on npm (6.1.0) is his
+8. ~~npm scope~~: decided 10:38, an owned scope; named `@countinghouse` on
+   2026-11-11 ~17:00. Releases publish by npm trusted publishing from
+   `.github/workflows/publish.yml` (no token, no 2FA code; docs/publishing.md);
+   Matt creates the organisation, does each package's one manual first
+   publish and configures its trusted publisher, on his timing. The `countinghouse` package on npm (6.1.0) is his
    account (maintainer `out4b <seeds.c@gmail.com>`, checked 2026-11-11),
    so that name is safe; a 7.x release with RC1 and LM1 must be published
    before `ch-local install` can work from npm, on his timing.
