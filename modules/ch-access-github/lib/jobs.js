@@ -14,8 +14,12 @@ async function collectFailedJobs(ctx, {owner, repo, runId}, perPage) {
     const list = body != null && body.jobs != null && Array.isArray(body.jobs.jobs) ? body.jobs.jobs : null;
     if (list == null) throw ctx.error('REMOTE_ANSWER_INVALID', `GitHub's server answered the jobs of run ${runId} without a jobs list`);
     all.push(...list);
-    if (list.length === 0 || !(all.length < body.jobs.total_count)) break;
+    if (list.length === 0 || !(all.length < body.jobs.total_count)) return failedOf(all);
   }
+  throw ctx.error('JOBS_INCOMPLETE', `run ${runId} has more jobs than ${MAX_PAGES} pages of ${perPage} hold`);
+}
+
+function failedOf(all) {
   return all
     .filter((j) => j != null && FAILED.has(j.conclusion))
     .map((j) => ({

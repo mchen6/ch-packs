@@ -14,20 +14,20 @@ const TOOLS = {
   runCommits: {tool: 'list_commits'}
 };
 
-const textOf = (result) => (Array.isArray(result && result.content) ? result.content : [])
+const textsOf = (result) => (Array.isArray(result && result.content) ? result.content : [])
   .filter((c) => c != null && c.type === 'text' && typeof c.text === 'string')
-  .map((c) => c.text)
-  .join('\n');
+  .map((c) => c.text);
 
 // One of our actions on the server -> {error: string} when the tool answered
 // with an error, else {body}: the JSON its text carries.
 async function request(ctx, action, args) {
   const {tool, method} = TOOLS[action];
   const result = await ctx.call(`remote:${REMOTE}/${tool}`, method != null ? {method, ...args} : args);
-  const text = textOf(result);
-  if (result != null && result.isError === true) return {error: text};
+  const texts = textsOf(result);
+  if (result != null && result.isError === true) return {error: texts.join('\n')};
+  // The answer is the first text part; a note after it is not part of it.
   try {
-    return {body: JSON.parse(text)};
+    return {body: JSON.parse(texts[0])};
   } catch {
     throw ctx.error('REMOTE_ANSWER_INVALID', `GitHub's server answered ${action} with something that is not JSON`);
   }

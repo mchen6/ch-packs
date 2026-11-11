@@ -50,3 +50,18 @@ test('listRuns validates its input', async () => {
   }
   assert.strictEqual(ctx.calls.length, 0);
 });
+
+// From /code-review medium on PR #32.
+test('listRuns returns at most limit runs whatever the server sends', async () => {
+  const ctx = fakeCtx({actions_list: fixture('list_workflow_runs')});
+  const {output} = await listRuns({repo: 'mchen6/countinghouse', limit: 10}, ctx);
+  assert.strictEqual(output.runs.length, 10);
+  assert.strictEqual(output.runs[0].runId, String(body('list_workflow_runs').workflow_runs[0].id));
+});
+
+test('a second text part after the JSON does not spoil the answer', async () => {
+  const r = fixture('list_workflow_runs').result;
+  const withNote = {result: {...r, content: [...r.content, {type: 'text', text: 'note: more pages are available'}]}};
+  const {output} = await listRuns({repo: 'mchen6/countinghouse', limit: 50}, fakeCtx({actions_list: withNote}));
+  assert.strictEqual(output.runs.length, 50);
+});

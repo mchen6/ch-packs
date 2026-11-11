@@ -47,3 +47,11 @@ test('failedJobs validates its input', async () => {
   }
   assert.strictEqual(ctx.calls.length, 0);
 });
+
+// From /code-review medium on PR #32.
+test('a job list longer than the page cap is an error, never a silent partial list', async () => {
+  const page = fixture('list_workflow_jobs-page');
+  const many = {result: {content: [{type: 'text', text: JSON.stringify({jobs: {total_count: 5000, jobs: body('list_workflow_jobs-page').jobs.jobs}})}]}};
+  const ctx = fakeCtx({actions_list: (args) => (args.page === 1 ? page : many)});
+  await assert.rejects(collectFailedJobs(ctx, {owner: 'mchen6', repo: 'countinghouse', runId: '42775507169'}, 2), (err) => err.code === 'JOBS_INCOMPLETE');
+});

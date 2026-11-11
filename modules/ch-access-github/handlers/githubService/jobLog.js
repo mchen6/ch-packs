@@ -21,6 +21,7 @@ module.exports = async (input, ctx) => {
   if (body == null || typeof body.logs_content !== 'string') throw ctx.error('REMOTE_ANSWER_INVALID', `GitHub's server answered the log of job ${input.jobId} without its content`);
   const text = body.logs_content;
   const lines = lineCount(text);
-  const truncated = Number.isInteger(body.original_length) && body.original_length > lines;
+  // Without original_length, a log that fills the requested tail may be cut.
+  const truncated = Number.isInteger(body.original_length) ? body.original_length > lines : lines >= TAIL_LINES;
   return {output: {text, lines, bytes: Buffer.byteLength(text, 'utf8'), expired: false, truncated}};
 };
