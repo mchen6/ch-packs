@@ -138,7 +138,7 @@ need as ordinary features, each a reviewed PR on its own branch:
 | RC1 HTTP remotes: a declared REST base URL with a credential header injected by the main thread, `ctx.fetch('remote:<name>', …)` | HubSpot, Slack and Datadog with static tokens, out of the box | A | after multi-server |
 | RC1 refresh-token grant: the runtime holds an OAuth client's refresh token and renews access tokens; no browser flow inside the runtime | Gmail (pack 8) | A | after the OAuth front |
 | OAuth 2.1 front: resource server per the MCP authorization spec, plus a minimal built-in authorization server where the one local user approves a client once | the phone route; also the hosted version | A | after the grant piece |
-| LM1 in-process metering and session state: the Redis provider's contract implemented in memory, selected when no `--redisUrl` is given | one command, no Redis | B | after the error series |
+| LM1 local store: `--store local` replaces Redis entirely on a client machine (maintainer, 2026-11-11): a file-backed metering provider, the module-facing kv store, and an in-process job runner, behind one selection point; `--store redis` stays the default for hosting | one command, no Redis, nothing to install | B | spec written 2026-11-11 |
 | LM1 stdio launcher: starts the runtime in-process and bridges stdio to the gateway (the gateway is stateless per request) | Claude Desktop bundles, and every local client's simplest form | B | with LM1 |
 | LM1 scenario loading: load a scenario package and, from node_modules, the modules it declares in `countinghouse.calls`; write the local auth binding (`runsModules`) for them | one install per scenario | B | with LM1 |
 | LM1 boundary counters: bytes and lines in at each access module's server call, bytes and lines out of each tool result, per call, kept in memory per session and exposed to the report tool | the receipt and the layer-1 report | B | with LM1 |
@@ -188,7 +188,8 @@ Clients that spawn stdio servers use the same command as their `command`
 and `args`.
 
 **Local mode** is a runtime configuration, not a build: `--workerThread`,
-`--moduleSandbox enforce`, no `--redisUrl` (in-process metering), the
+`--moduleSandbox enforce`, `--store local` (the file-backed store that replaces
+Redis), the
 file-backed auth provider with the zero-config demo key that already exists
 (generated on first start, written to `auth.json` under the launcher's own
 directory, not the working directory), and `--loadModule` for the scenario
