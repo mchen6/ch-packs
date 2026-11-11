@@ -44,7 +44,12 @@ function portFree(port) {
 }
 
 async function choosePort() {
-  if (process.env.SMOKE_PORT) return Number(process.env.SMOKE_PORT);
+  const given = process.env.SMOKE_PORT;
+  if (given !== undefined && given !== '') {
+    const port = Number(given);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`SMOKE_PORT must be a port number from 1 to 65535, not "${given}"`);
+    return port;
+  }
   for (let p = PORTS[0]; p <= PORTS[1]; p++) if (await portFree(p)) return p;
   throw new Error(`no free port in ${PORTS[0]}-${PORTS[1]}`);
 }
@@ -62,36 +67,40 @@ async function rpc(port, key, method, params) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ch-smoke-'));
-  const key = 'smoke-' + crypto.randomBytes(16).toString('hex');
-  fs.writeFileSync(path.join(dir, 'auth.json'), JSON.stringify({[key]: {userName: 'smoke', devices: ['*']}}, null, 2));
-  const port = await choosePort();
-  const args = [FRAMEWORK, '--workerThread', '--moduleSandbox', 'enforce', '--loadModule', MODULE,
-    '--bindAddr', '127.0.0.1', '--port', String(port),
-    '--authConfigPath', path.join(dir, 'auth.json'), '--moduleDataPath', path.join(dir, 'module_data')];
-  if (process.env.SMOKE_REDIS_URL) args.push('--redisUrl', process.env.SMOKE_REDIS_URL);
-
-  const child = spawn(process.execPath, args, {cwd: dir, stdio: ['ignore', 'pipe', 'pipe']});
-  let output = '';
-  child.stdout.on('data', (d) => { output += d; });
-  child.stderr.on('data', (d) => { output += d; });
-  let exited = null;
-  child.on('exit', (code, signal) => { exited = {code, signal}; });
-
   const say = (line) => process.stdout.write(`smoke: ${line}\n`);
+  let dir = null;
+  let child = null;
+  let exited = null;
+  let output = '';
   try {
+    const port = await choosePort();
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ch-smoke-'));
+    const key = 'smoke-' + crypto.randomBytes(16).toString('hex');
+    fs.writeFileSync(path.join(dir, 'auth.json'), JSON.stringify({[key]: {userName: 'smoke', devices: ['*']}}, null, 2));
+    const args = [FRAMEWORK, '--workerThread', '--moduleSandbox', 'enforce', '--loadModule', MODULE,
+      '--bindAddr', '127.0.0.1', '--port', String(port),
+      '--authConfigPath', path.join(dir, 'auth.json'), '--moduleDataPath', path.join(dir, 'module_data')];
+    if (process.env.SMOKE_REDIS_URL) args.push('--redisUrl', process.env.SMOKE_REDIS_URL);
+
+    child = spawn(process.execPath, args, {cwd: dir, stdio: ['ignore', 'pipe', 'pipe']});
+    child.stdout.on('data', (d) => { output += d; });
+    child.stderr.on('data', (d) => { output += d; });
+    child.on('error', (err) => { exited = {code: err.code || err.message}; });
+    child.on('exit', (code, signal) => { exited = {code, signal}; });
+
     say(`countinghouse ${require(path.join(path.dirname(FRAMEWORK), 'package.json')).version} on Node ${process.version} (${process.platform}-${process.arch}), port ${port}`);
 
-    // 1. Started, the module loaded, its tool listed.
+    // 1. Started, the module loaded, its tool listed. A thrown fetch means the
+    // server is not listening yet; a JSON-RPC error is an answer, and fails now.
     const deadline = Date.now() + START_TIMEOUT_MS;
     let tool = null;
     while (tool == null) {
       if (exited) throw new Error(`the server exited (${exited.code ?? exited.signal}) before listing the tool`);
       if (Date.now() > deadline) throw new Error(`the tool was not listed within ${START_TIMEOUT_MS / 1000} s`);
-      try {
-        const list = await rpc(port, key, 'tools/list', {});
-        tool = ((list.result && list.result.tools) || []).find((t) => /hello/.test(t.name)) || null;
-      } catch { /* not listening yet */ }
+      let list = null;
+      try { list = await rpc(port, key, 'tools/list', {}); } catch { /* not listening yet */ }
+      if (list && list.error) throw new Error(`tools/list answered an error: ${JSON.stringify(list.error)}`);
+      tool = list && list.result ? (list.result.tools || []).find((t) => /hello/.test(t.name)) || null : null;
       if (tool == null) await sleep(500);
     }
     say(`listed ${tool.name}`);
@@ -99,21 +108,23 @@ async function main() {
     // 2. The call.
     const called = await rpc(port, key, 'tools/call', {name: tool.name, arguments: {}});
     const answer = called.result && !called.result.isError ? called.result.structuredContent : null;
-    const ok = answer != null && answer.text === 'hello';
-    if (!ok) throw new Error(`unexpected answer: ${JSON.stringify(called)}`);
+    if (answer == null || answer.text !== 'hello') throw new Error(`unexpected answer: ${JSON.stringify(called)}`);
     say('the call answered {text: "hello"}');
     say('pass');
     return 0;
   } catch (err) {
-    process.stderr.write(`smoke: FAIL: ${err.message}\n--- server output ---\n${output}\n`);
+    process.stderr.write(`smoke: FAIL: ${err.message}\n${output ? `--- server output ---\n${output}\n` : ''}`);
     return 1;
   } finally {
-    if (!exited) {
+    if (child && !exited) {
       child.kill();
       await new Promise((r) => (exited ? r() : child.once('exit', r)));
     }
-    fs.rmSync(dir, {recursive: true, force: true, maxRetries: 5, retryDelay: 200});
+    if (dir) fs.rmSync(dir, {recursive: true, force: true, maxRetries: 5, retryDelay: 200});
   }
 }
 
-main().then((code) => { process.exitCode = code; });
+main().then((code) => { process.exitCode = code; }, (err) => {
+  process.stderr.write(`smoke: FAIL: ${err && err.message}\n`);
+  process.exitCode = 1;
+});
