@@ -140,7 +140,7 @@ need as ordinary features, each a reviewed PR on its own branch:
 | OAuth 2.1 front: resource server per the MCP authorization spec, plus a minimal built-in authorization server where the one local user approves a client once | the phone route; also the hosted version | A | after the grant piece |
 | LM1 local store: `--store local` replaces Redis entirely on a client machine (maintainer, 2026-11-11): a file-backed metering provider, the module-facing kv store, and an in-process job runner, behind one selection point; `--store redis` stays the default for hosting | one command, no Redis, nothing to install | B | spec written 2026-11-11 |
 | LM1 stdio launcher: starts the runtime in-process and bridges stdio to the gateway (the gateway is stateless per request) | Claude Desktop bundles, and every local client's simplest form | B | with LM1 |
-| LM1 scenario loading: load a scenario package and, from node_modules, the modules it declares in `countinghouse.calls`; write the local auth binding (`runsModules`) for them | one install per scenario | B | with LM1 |
+| LM1 scenario loading: load a scenario package and, from node_modules, the modules it declares in `countinghouse.calls`; generate the local auth binding (`runsModules`) for them in memory, with the single-identity profile (no auth file, no balance gate, stable caller id; maintainer, 2026-11-11) | one install per scenario | B | with LM1 |
 | LM1 boundary counters: bytes and lines in at each access module's server call, bytes and lines out of each tool result, per call, kept in memory per session and exposed to the report tool | the receipt and the layer-1 report | B | with LM1 |
 | Node floor: 22.16 with the resolve shim (section 10) | most developers never hit the floor | B, before LM1 | conditional (section 10) |
 | UL1 usage ledger (hash-chained, exportable) | "what the packs' calls replaced", durable across sessions | B | after LM1 |
@@ -189,18 +189,25 @@ and `args`.
 
 **Local mode** is a runtime configuration, not a build: `--workerThread`,
 `--moduleSandbox enforce`, `--store local` (the file-backed store that replaces
-Redis), the
-file-backed auth provider with the zero-config demo key that already exists
-(generated on first start, written to `auth.json` under the launcher's own
-directory, not the working directory), and `--loadModule` for the scenario
-with its parts resolved from node_modules. The launcher is the only client
-of that key and passes it itself; the key is never printed when the
-launcher is the caller. In HTTP mode (a runtime the user keeps running,
-the phone route) the user needs it: `--show-key` prints it once, on
-request, and nothing else ever does (my call).
+Redis), `--stdio`, and `--loadModule` for the scenario with its parts
+resolved from node_modules. **One user (maintainer, 2026-11-11):** a client
+machine has one user who uses every hosted tool, so the runtime's
+single-identity profile applies (LM1 spec, section 4): the key and the
+scenario's `runsModules` bindings live in the process's memory, no
+`auth.json` is written, the launcher is the only client and passes no key,
+and the local metering provider counts for the receipt but never refuses a
+call for balance or rate (`--meter` is never passed by the launcher). The
+multi-tenant code path is unchanged underneath, so a pack module behaves
+identically on a hosted runtime. In HTTP mode (a runtime the user keeps
+running, the phone route) a key is needed because a remote client must
+present one: the launcher starts that runtime with an `auth.json` it
+generates under its own directory (exclusive create on first start, never
+changed after), and `--show-key` prints the key once, on request; nothing
+else ever does (my call).
 
 **Where files go.** `~/.countinghouse/` (or `$COUNTINGHOUSE_HOME`): the
-demo key, module data (one directory per module, as the runtime does
+identity secret and the store, the HTTP-mode `auth.json` when that mode
+has been started, module data (one directory per module, as the runtime does
 today), the fingerprint cache, the session counters, and a fetched Node if
 the user consented. Nothing is written to the working tree.
 
@@ -259,7 +266,8 @@ behind is part of the claim.
 
 **Several launchers at once.** A developer with three Claude Code
 terminals and Cursor open has four launcher processes. They coexist
-without a daemon: `auth.json` is read-only after first start (first-start
+without a daemon: stdio launchers write no auth file at all, and the
+HTTP mode's `auth.json` is read-only after first start (first-start
 creation uses an exclusive create); the fingerprint cache is written by
 temp-file-and-rename with a merge on read, so two writers lose nothing;
 usage records are one append-only file per process (section 6), never
@@ -277,11 +285,13 @@ is pure JavaScript: no native module of its own, no shell script (every
 `os.homedir()`, atomic writes by temp-file-and-rename (atomic on all three
 systems), environment variables read case-insensitively on Windows,
 process stop by `child.kill()` with no signal names assumed, stdio in
-binary mode, line endings never assumed. The runtime's one native
-dependency, `sqlite3`, ships prebuilt binaries for Linux, macOS and
-Windows on x64 and arm64, fetched by `npm ci` at install time; the
-launcher's install fails clearly if no prebuilt binary matches, rather
-than trying to compile. Testing without a Mac: the pack family's CI runs
+binary mode, line endings never assumed. The runtime's only native
+dependency, `sqlite3`, is optional and serves three things the pack never
+uses (the sqlite auth provider, the module registry database, which
+`--loadModule` skips, and the user-management CLI), so the launcher
+installs with `npm ci --omit=optional` (maintainer, 2026-11-11): no
+native binary is downloaded or compiled on any platform, and the
+installed tree is pure JavaScript end to end. Testing without a Mac: the pack family's CI runs
 its suite on GitHub's `ubuntu-latest`, `macos-latest` and `windows-latest`
 runners, and launches the stdio server the same way a client would on each.
 Development and the closed loop run on Linux. Claude Desktop itself cannot
@@ -378,8 +388,9 @@ each module once per path.
 
 **Composition and identity.** A scenario's `calls` entries name
 `<module>/<service>.<action>`, enforced on the main thread (R2-1). The
-local auth binding (`runsModules`) is generated by the launcher for the
-loaded scenario and its parts, so the user never edits auth.json.
+local auth binding (`runsModules`) is generated by the runtime in memory
+for the loaded scenario and its parts, so there is no auth.json for the
+user to edit.
 
 **Parts are loaded, not listed (my call).** A module declares its role in
 package.json: `countinghouse.role` is `"scenario"` or `"part"` (access and
