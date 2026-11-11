@@ -74,7 +74,12 @@ phone.
 
 - A stranger with Node and a GitHub PAT installs pack 1 in Claude Code or
   Cursor and gets the moment above within five minutes. That is the
-  acceptance test for the first release.
+  acceptance test for the first release. Until Matt lifts the
+  publication rule, the test runs from local tarballs: `npm pack` of every
+  package and of a countinghouse 7.x build, installed by `ch-local install
+  --from <dir>`; a private registry (Verdaccio) is the fallback if the
+  tarball path proves unlike the npm path. The plan says which (business
+  review, 2026-11-11).
 - Each scenario installs alone, needs only its own credentials, and is
   absent when unconfigured.
 - Only scenario tools appear in tools/list.
@@ -146,6 +151,12 @@ otherwise: this repository, `ch-packs`. Every npm package name starts with
 is Matt's call. Names: `ch-local` (the launcher), `ch-access-<server>`,
 `ch-step-<name>`, `ch-pack-<scenario>`, `ch-report` (the report tool),
 `ch-trace-report` (the analysis tool, from its own repository). It contains:
+Unscoped names cannot be protected as a family: anyone can publish a
+`ch-pack-<x>` that looks like ours, and the install pulls packages by name
+and runs them with the user's keys. An npm scope is owned; whether to use
+one (`@ch/` or similar) instead of the bare prefix is Matt's call (section
+14). Either way `ch-local install` accepts only names from its own
+allowlist, pinned by version and integrity hash, never an arbitrary name.
 
 - `launcher/`: the command a developer runs or a client starts
   (`ch-local`): the stdio entry point, the install
@@ -547,7 +558,11 @@ so does Datadog's. So RC1 gains a second kind of remote beside an MCP
 server: an HTTP remote, declared with a base URL and the credential's
 variable, which the main thread calls on the module's behalf, injecting
 the credential header; the module calls `ctx.fetch('remote:<name>', path,
-options)` and never sees the token. An access module then chooses, per
+options)` and never sees the token. The injected credential goes only to
+the declared base URL's host: a module passes a path, never an absolute
+URL; a redirect to another host is not followed with the header (and is
+reported as a violation); the response's headers are not handed to the
+module (business review, 2026-11-11). An access module then chooses, per
 server, the vendor's MCP server or its REST API, whichever takes a static
 credential and has the stable surface the steps need. The refresh-token
 grant stays for Gmail (pack 8). Trade-off stated in each access module's
@@ -677,6 +692,11 @@ the shim, the floor question returns to Matt.
    yes.
 6. Upgrade policy: "easy, opt-in automatic" (this design, and the
    business side's advice) or automatic by default (his 09:48 wording).
+8. npm: whether to use an owned scope instead of the bare `ch-` prefix
+   (business side's note); The `countinghouse` package on npm (6.1.0) is his
+   account (maintainer `out4b <seeds.c@gmail.com>`, checked 2026-11-11),
+   so that name is safe; a 7.x release with RC1 and LM1 must be published
+   before `ch-local install` can work from npm, on his timing.
 7. Token figures in the report: none in layer 1 (this design) or an
    approximate token column in the report only, never the receipt,
    labelled as an estimate with its method beside the exact bytes and
