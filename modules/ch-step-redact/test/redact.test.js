@@ -168,9 +168,9 @@ test('a digit run that fails the Luhn check is not a card: epoch milliseconds st
   assert.strictEqual(r.counts.card, 1);
 });
 
-test('a bare user before @ is not a credential: git+ssh and user-only URLs stay', () => {
-  const r = redactLines(['npm error command git --no-replace-objects ls-remote ssh://' + 'git@github.com/o/r.git', 'https://' + 'T'.repeat(30) + '@example.org/x']);
-  assert.deepStrictEqual(r.lines, ['npm error command git --no-replace-objects ls-remote ssh://' + 'git@github.com/o/r.git', 'https://' + 'T'.repeat(30) + '@example.org/x']);
+test('a short bare user before @ is not a credential: git+ssh stays', () => {
+  const r = redactLines(['npm error command git --no-replace-objects ls-remote ssh://' + 'git@github.com/o/r.git']);
+  assert.deepStrictEqual(r.lines, ['npm error command git --no-replace-objects ls-remote ssh://' + 'git@github.com/o/r.git']);
   assert.strictEqual(r.counts.basicAuthUrl, 0);
 });
 
@@ -200,4 +200,42 @@ test('a secret assigned in an environment dump or a command line has its value m
     'GITHUB_TOKEN=<githubToken>', 'max_tokens: 5'
   ]);
   assert.strictEqual(r.counts.secret, 4);
+});
+
+// From /code-review medium on PR #30.
+test('a card next to an expiry date or another number is still masked; a lone timestamp is not', () => {
+  const r = redactLines(['card 4111 1111 1111 1111 12/27', '4111111111111111 1', 'ts 1794304800000 1']);
+  assert.deepStrictEqual(r.lines, ['card <card> 12/27', '<card> 1', 'ts 1794304800000 1']);
+  assert.strictEqual(r.counts.card, 2);
+});
+
+test('a token used as a URL user is masked; a short user name (git@) is not', () => {
+  const r = redactLines(['git clone https://' + 'glpat' + '-abcdefghijklmnop@gitlab.com/o/r', 'https://' + 'T'.repeat(30) + '@example.org/x', 'ssh://' + 'git@github.com/o/r.git']);
+  assert.deepStrictEqual(r.lines, ['git clone https://<basicAuth>@gitlab.com/o/r', 'https://<basicAuth>@example.org/x', 'ssh://' + 'git@github.com/o/r.git']);
+});
+
+test('assigned secrets: quoted values whole, names by word part, error text left alone', () => {
+  const pw = ['ab', ';cd'].join('');
+  const r = redactLines([
+    `pass${'word'}="${pw}"`,
+    `pass${'word'}='correct horse'`,
+    `SEC${'RET'}_KEY=abcdef`,
+    `SEC${'RET'}_KEY_BASE: 0123abcd`,
+    'SyntaxError: Unexpected token: )',
+    'Invalid token: abc',
+    'missing secret: FOO',
+    `  - "api_${'key'}": "x1"`
+  ]);
+  assert.deepStrictEqual(r.lines, [
+    'password="<secret>"', "password='<secret>'", 'SECRET_KEY=<secret>', 'SECRET_KEY_BASE: <secret>',
+    'SyntaxError: Unexpected token: )', 'Invalid token: abc', 'missing secret: FOO', '  - "api_key": "<secret>"'
+  ]);
+  assert.strictEqual(r.counts.secret, 5);
+});
+
+test('the secret rule stays linear on long joined names', () => {
+  const start = Date.now();
+  redactLines(['a-'.repeat(100000) + 'token=x', 'tok' + 'en_'.repeat(1) + 'token_'.repeat(30000) + '=x', ('db_pass' + 'word ').repeat(20000)]);
+  const ms = Date.now() - start;
+  assert.ok(ms < 2000, `took ${ms} ms`);
 });

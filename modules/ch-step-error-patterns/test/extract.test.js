@@ -49,6 +49,8 @@ test('runner and tool patterns', () => {
     ['    Expected: 4', ['assert']],
     ['    Received: 3', ['assert']],
     ['error[E0308]: mismatched types', ['error']],
+    ["  3:5  error  'x' is not defined  no-undef", ['error']],
+    ['Found 2 errors in the same file, starting at: src/a.ts:3', ['error']],
     ['a.c:3:5: error: expected ; before }', ['error']],
     ['src/a.ts(3,1): error TS2304: Cannot find name', ['error']],
     ['panic: runtime error: index out of range', ['error']],
@@ -179,5 +181,23 @@ test('handler validates stepConclusions', async () => {
     await assert.rejects(extract(bad), invalid, JSON.stringify(bad));
   }
   const {output} = await extract({steps: [{name: 'Run a', lines: ['Error: x']}], stepConclusions: conclusions(['A', 'failure'])});
+  assert.strictEqual(output.failingStep, 'Run a');
+});
+
+// From /code-review medium on PR #30.
+test('two steps with one name: the failed one is matched by its place among the same-named steps', () => {
+  const steps = [{name: 'Run npm test', lines: ['ok']}, {name: 'Run npm test', lines: ['Error: second', '##[error]Process completed with exit code 1.']}];
+  const out = extractErrors(steps, 40, conclusions(['Run npm test', 'success'], ['Run npm test', 'failure']));
+  assert.strictEqual(out.failingStep, 'Run npm test');
+  assert.strictEqual(out.lines[0].index, 0);
+  assert.strictEqual(out.lines.find((l) => l.kind === 'exit').step, 'Run npm test');
+  // The second step's lines are ranked first under a tight maxLines.
+  const tight = extractErrors([{name: 'Run npm test', lines: ['Error: first']}, ...steps.slice(1)], 2, conclusions(['Run npm test', 'success'], ['Run npm test', 'failure']));
+  assert.deepStrictEqual(tight.lines.map((l) => l.text), ['Error: second', '##[error]Process completed with exit code 1.']);
+});
+
+test('steps as the jobs API lists them are accepted: a null conclusion and the API\'s other fields', async () => {
+  const api = [{name: 'Set up job', status: 'completed', conclusion: 'success', number: 1, started_at: 'x', completed_at: 'y'}, {name: 'Run a', status: 'in_progress', conclusion: null, number: 2}];
+  const {output} = await extract({steps: [{name: 'Run a', lines: ['Error: x']}], stepConclusions: api});
   assert.strictEqual(output.failingStep, 'Run a');
 });

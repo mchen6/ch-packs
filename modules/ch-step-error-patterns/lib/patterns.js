@@ -8,7 +8,8 @@
 //   error   a ##[error] line, an error or exception name (TypeError,
 //           IllegalStateException), the word "error" where tools print it as
 //           a verdict (at the start of a line, "npm error", "error:",
-//           "error[E0308]:", "error TS2304"; not console.error or a file
+//           "error[E0308]:", "error TS2304", ESLint's "3:5  error", tsc's
+//           "Found 2 errors"; not console.error or a file
 //           called error.test.js), "ERROR", FAIL/FAILED, panic:, fatal:, TAP's
 //           "not ok" (not with # SKIP or # TODO), node --test's ✖, Jest's ●;
 //   assert  one of those that says Assertion or Expected, or "expected …"
@@ -37,14 +38,16 @@ function failedFromConclusions(steps, stepConclusions) {
   const ran = stepConclusions.filter((c) => c.conclusion !== 'skipped' && !API_SETUP.test(c.name));
   const k = ran.findIndex((c) => c.conclusion === 'failure');
   if (k === -1) return null;
-  const byName = steps.findIndex((s) => s.name === ran[k].name);
-  if (byName !== -1) return byName;
+  // By name: the failed step is the j-th of the steps with its name.
+  const j = ran.slice(0, k).filter((c) => c.name === ran[k].name).length;
+  const named = steps.map((s, i) => i).filter((i) => steps[i].name === ran[k].name);
+  if (named.length > j) return named[j];
   const logSteps = steps.map((s, i) => i).filter((i) => isLogCommandStep(steps[i].name));
   return logSteps.length === ran.length ? logSteps[k] : null;
 }
 
 const EXIT = /Process completed with exit code [1-9]\d*/;
-const ERROR = /^##\[error\]|\b(?:[A-Z][A-Za-z]*)?(?:Error|Exception)\b|^\s*(?:npm\s+)?error\b|(?<!\.)\berror(?:\[\w+\])?:|\berror\s+[A-Z]+\d+|\bERROR\b|\bFAIL(?:ED)?\b|\b(?:panic|fatal):|^\s*not ok\b|^\s*[✖●]/;
+const ERROR = /^##\[error\]|\b(?:[A-Z][A-Za-z]*)?(?:Error|Exception)\b|^\s*(?:npm\s+)?error\b|(?<!\.)\berror(?:\[\w+\])?:|\berror\s+[A-Z]+\d+|^\s*\d+:\d+\s+error\b|\bFound \d+ errors?\b|\bERROR\b|\bFAIL(?:ED)?\b|\b(?:panic|fatal):|^\s*not ok\b|^\s*[✖●]/;
 const JEST_ASSERT = /^\s*expect\(|^\s*(?:Expected|Received)(?: [\w ]+)?:/;
 const TAP_DIRECTIVE = /^\s*not ok\b.*#\s*(?:SKIP|TODO)\b/i;
 const ASSERT = /Assertion|\bExpected\b|\bexpected\b(?=.*\b(?:to|but|got|received|actual)\b)/;

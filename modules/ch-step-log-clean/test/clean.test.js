@@ -152,3 +152,12 @@ test('a uses: step whose header group is empty is still a step', () => {
     {name: 'Run ./.github/actions/mine', lines: ['action output', '##[error]Process completed with exit code 1.']}
   ]);
 });
+
+// From /code-review medium on PR #30.
+test('an empty group a script opens is not a step, even when named "Run …"; an empty action header is', () => {
+  const out = cleanLog([...header('make db'), '##[group]Run migrations', '##[endgroup]', 'migrated',
+    '##[group]Run actions/cache@v4', '##[endgroup]', 'Cache restored', '##[group]Run docker://alpine:3', '##[endgroup]', 'ran'].join('\n'));
+  assert.deepStrictEqual(out.steps.map((s) => [s.name, s.lines]), [
+    ['Run make db', ['migrated']], ['Run actions/cache@v4', ['Cache restored']], ['Run docker://alpine:3', ['ran']]
+  ]);
+});

@@ -154,7 +154,8 @@
                     "type": "array",
                     "maxItems": 3,
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[^@\\s]+$"
                     }
                   },
                   "why": {
@@ -374,7 +375,8 @@
                     "type": "array",
                     "maxItems": 3,
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[^@\\s]+$"
                     }
                   },
                   "why": {

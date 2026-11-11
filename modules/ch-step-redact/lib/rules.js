@@ -94,13 +94,66 @@ function luhn(match) {
   return sum % 10 === 0;
 }
 
+// A card number is 13-19 digits that pass the Luhn check; a 13-digit epoch
+// millisecond mostly does not. A digit run may hold more than the card (an
+// expiry, a count after it), so whole digit groups are tried, the whole run
+// first, then shorter runs of groups from the left.
+const DIGIT_RUN = /\b(?:\d[ -]?){12,18}\d\b/g;
+function maskCards(line, tag) {
+  let n = 0;
+  const text = line.replace(DIGIT_RUN, (run) => {
+    const groups = [...run.matchAll(/\d+/g)].map((m) => ({at: m.index, end: m.index + m[0].length, digits: m[0]}));
+    for (let len = groups.length; len >= 1; len--) {
+      for (let i = 0; i + len <= groups.length; i++) {
+        const digits = groups.slice(i, i + len).map((g) => g.digits).join('');
+        if (digits.length < 13 || digits.length > 19 || !luhn(digits)) continue;
+        n++;
+        return run.slice(0, groups[i].at) + tag + run.slice(groups[i + len - 1].end);
+      }
+    }
+    return run;
+  });
+  return {text, n};
+}
+
+// Assigned secrets. A name is word parts joined by _ or - with one part (or
+// api_key) naming a secret: DB_PASSWORD, SECRET_KEY, client_secret, api-key;
+// max_tokens is not one. "name = value" counts anywhere; "name: value" only as
+// a key, at the start of a line or quoted, so the error text "Unexpected
+// token: )" stays. A value an earlier rule tagged (<…>) is left alone.
+// Bounded (at most 8 parts of 64 on each side) so a long run of joined parts
+// costs a fixed amount per start: unbounded, '-eyJ' x 20000 took 7 s.
+const SECRET_NAME = '(?:[A-Za-z0-9]{1,64}[_-]){0,8}(?:password|passwd|secret|token|api[_-]?key)(?:[_-][A-Za-z0-9]{1,64}){0,8}';
+const SECRET_VALUE = `("[^"\\n]{0,4096}"|'[^'\\n]{0,4096}'|(?![<"'])[^\\s"',;]+)`;
+const SECRET_FORMS = [
+  new RegExp(`(?<![A-Za-z0-9_])(${SECRET_NAME})(["']?\\s*=\\s*)${SECRET_VALUE}`, 'gi'),
+  new RegExp(`(^\\s*(?:-\\s+)?)(${SECRET_NAME})(\\s*:\\s*)${SECRET_VALUE}`, 'gi'),
+  new RegExp(`(["'])(${SECRET_NAME})\\1(\\s*:\\s*)${SECRET_VALUE}`, 'gi')
+];
+function maskSecrets(line, tag) {
+  let n = 0;
+  let text = line;
+  SECRET_FORMS.forEach((re, form) => {
+    text = text.replace(re, (...m) => {
+      const value = form === 0 ? m[3] : m[4];
+      const quote = /^["']/.test(value) ? value[0] : '';
+      if (value.slice(quote.length).startsWith('<')) return m[0];
+      n++;
+      return m[0].slice(0, m[0].length - value.length) + quote + tag + quote;
+    });
+  });
+  return {text, n};
+}
+
 // Applied in this order, to every line, after private key blocks are gone.
 // A URL's credentials before a token type, so a token used as a URL password
 // is masked (and counted) once.
 const PATTERNS = [
   {type: 'jwt', tag: '<jwt>', mask: maskJwts},
   // A password is required: a bare user (ssh://git@github.com) is no secret.
-  {type: 'basicAuthUrl', tag: '://<basicAuth>@', re: /:\/\/[^/:@\s]{0,1024}:[^/@\s]{1,1024}@/g},
+  // A password, or a user long enough to be a token (https://glpat-…@host);
+  // a short bare user (ssh://git@github.com) is no secret.
+  {type: 'basicAuthUrl', tag: '://<basicAuth>@', re: /:\/\/(?:[^/:@\s]{0,1024}:[^/@\s]{1,1024}|[^/:@\s]{16,1024})@/g},
   {type: 'githubToken', tag: '<githubToken>', re: /(?<![A-Za-z0-9])(?:gh[oprsu]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})/g},
   {type: 'awsKey', tag: '<awsKey>', re: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g},
   {type: 'awsKey', tag: '$1$2<awsKey>', re: /\b(aws_secret_access_key)(\s*[=:]\s*)["']?[A-Za-z0-9/+]{40}["']?/gi},
@@ -109,13 +162,11 @@ const PATTERNS = [
   {type: 'bearerToken', tag: '$1<token>', re: /(authorization:\s*)token\s+[A-Za-z0-9_-]{16,}/gi},
   // Vendors' key shapes: Slack, Stripe (secret and restricted), Google, npm.
   {type: 'apiKey', tag: '<apiKey>', re: /(?<![A-Za-z0-9])(?:xox[baprs]-[A-Za-z0-9-]{10,}|[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{35}|npm_[A-Za-z0-9]{36})(?![A-Za-z0-9])/g},
-  // A secret assigned in an environment dump, a config or a command line
-  // (DB_PASSWORD=…, api_key: …, "client_secret": "…"): the value goes, the
-  // name stays; a value an earlier rule already tagged is left alone.
-  {type: 'secret', tag: '$1$2<secret>', re: /\b([A-Za-z0-9_]*?(?:password|passwd|secret|token|api[_-]?key))(["']?\s*[=:]\s*["']?)(?!<)[^\s"',;]+/gi},
+  // A secret assigned in an environment dump, a config or a command line: the
+  // value goes (a quoted one whole), the name stays.
+  {type: 'secret', tag: '<secret>', mask: maskSecrets},
   {type: 'email', tag: '<email>', mask: maskEmails},
-  // A card number passes the Luhn check; a 13-digit epoch millisecond mostly does not.
-  {type: 'card', tag: '<card>', re: /\b(?:\d[ -]?){12,18}\d\b/g, accept: luhn},
+  {type: 'card', tag: '<card>', mask: maskCards},
   {type: 'ipv4', tag: '<ipv4>', re: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g},
   {type: 'phone', tag: '<phone>', re: /(?:\+\d{1,3}[-. ]?)?(?:\(\d{3}\)|\d{3})[-. ]\d{3}[-. ]\d{4}\b/g}
 ];
@@ -175,7 +226,6 @@ function redactLines(lines) {
         counts[p.type] += r.n;
       } else {
         out = out.replace(p.re, (...m) => {
-          if (p.accept && !p.accept(m[0])) return m[0];
           counts[p.type]++;
           return p.tag.replace(/\$(\d)/g, (_, i) => m[Number(i)]);
         });

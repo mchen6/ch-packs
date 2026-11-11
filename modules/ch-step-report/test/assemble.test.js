@@ -70,7 +70,7 @@ test('handler validates its input', async () => {
   for (const bad of [{}, null, {...f, run: null}, {...f, run: {...f.run, step: 7}}, {...f, errors: [1]}, {...f, history: {...f.history, verdict: 'odd'}},
     {...f, history: {...f.history, count: 0}}, {...f, coverage: null}, {...f, extra: 1},
     {...f, history: {...f.history, count: 3}}, {...f, history: {...f.history, verdict: 'new'}},
-    {...f, ownerHint: {logins: [7], why: ['x']}}, {...f, ownerHint: {logins: ['a', 'b'], why: ['a: x']}},
+    {...f, ownerHint: {logins: [7], why: ['x']}}, {...f, ownerHint: {logins: ['octo@example.com'], why: ['x']}}, {...f, ownerHint: {logins: ['Octo Cat'], why: ['x']}}, {...f, ownerHint: {logins: ['a', 'b'], why: ['a: x']}},
     {...f, ownerHint: {logins: ['a', 'b', 'c', 'd'], why: ['1', '2', '3', '4']}}]) {
     await assert.rejects(assemble(bad), invalid, JSON.stringify(bad).slice(0, 80));
   }

@@ -23,6 +23,8 @@ const GROUP = /^##\[group\](.*)$/;
 const ENDGROUP = /^##\[endgroup\]/;
 const STEP_HEADER = /^Run /;
 const USES_BLOCK = /^(?:with|env):\s*$/;
+// What a uses: step's header names: ./path, owner/repo[/path]@ref, docker://image.
+const ACTION_REF = /^Run (?:\.{1,2}\/\S+|[\w.-]+\/[\w./-]+@\S+|docker:\/\/\S+)$/;
 const POST_STEP = /^Post job cleanup\.?$/;
 const MARKED = /^##\[(?:error|warning)\]/;
 // Progress: a bare percentage, and git's transfer counters.
@@ -65,10 +67,12 @@ function cleanLog(text) {
     if (group) {
       const next = i + 1 < visible.length ? visible[i + 1] : '';
       // A header holds the cyan command echo, a uses: step's with:/env: block,
-      // or nothing at all (an action with no inputs).
+      // or, for an action with no inputs, nothing at all; an empty group a
+      // script opens ("Run migrations") is not an action reference.
       const nextLine = next.replace(ANSI, '');
-      if (STEP_HEADER.test(group[1]) && (next.startsWith(CYAN) || USES_BLOCK.test(nextLine) || ENDGROUP.test(nextLine))) {
-        open(group[1].trim());
+      const name = group[1].trim();
+      if (STEP_HEADER.test(name) && (next.startsWith(CYAN) || USES_BLOCK.test(nextLine) || (ENDGROUP.test(nextLine) && ACTION_REF.test(name)))) {
+        open(name);
         inHeader = true;
       }
       return;

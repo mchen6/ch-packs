@@ -60,7 +60,7 @@
                 "name",
                 "conclusion"
               ],
-              "additionalProperties": false
+              "additionalProperties": true
             }
           }
         },
