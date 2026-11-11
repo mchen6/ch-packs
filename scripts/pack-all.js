@@ -14,7 +14,21 @@ const {npm} = require('./lib/npm');
 
 function option(argv, name, fallback) {
   const i = argv.indexOf(name);
-  return i === -1 ? fallback : argv[i + 1];
+  if (i === -1) return fallback;
+  const value = argv[i + 1];
+  if (value === undefined || value.startsWith('--')) throw new Error(`${name} needs a value`);
+  return value;
+}
+
+// npm prints what workspace scripts (prepack, prepare, postpack) write on the
+// same stdout, before its JSON: the JSON is the last top-level array.
+function lastJsonArray(stdout) {
+  const starts = stdout.startsWith('[') ? [0] : [];
+  for (let i = stdout.indexOf('\n['); i !== -1; i = stdout.indexOf('\n[', i + 1)) starts.push(i + 1);
+  for (const start of starts.reverse()) {
+    try { return JSON.parse(stdout.slice(start)); } catch { /* script output that starts with "[" */ }
+  }
+  throw new Error('npm pack printed no JSON list');
 }
 
 function fail(message) {
@@ -23,8 +37,14 @@ function fail(message) {
 }
 
 function main(argv) {
-  const root = path.resolve(option(argv, '--root', path.join(__dirname, '..')));
-  const out = path.resolve(option(argv, '--out', path.join(root, 'dist')));
+  let root;
+  let out;
+  try {
+    root = path.resolve(option(argv, '--root', path.join(__dirname, '..')));
+    out = path.resolve(option(argv, '--out', path.join(root, 'dist')));
+  } catch (err) {
+    return fail(err.message);
+  }
 
   fs.mkdirSync(out, {recursive: true});
   const packed = npm(['pack', '--workspaces', '--json', '--pack-destination', out], {cwd: root});
@@ -34,9 +54,15 @@ function main(argv) {
       process.stdout.write('[]\n');
       return 0;
     }
-    return fail(`npm pack failed:\n${packed.stderr}`);
+    return fail(`npm pack failed${packed.error ? ` (${packed.error.code || packed.error.message})` : ''}:\n${packed.stderr}`);
   }
-  const list = JSON.parse(packed.stdout).map((e) => {
+  let entries;
+  try {
+    entries = lastJsonArray(packed.stdout);
+  } catch (err) {
+    return fail(err.message);
+  }
+  const list = entries.map((e) => {
     const bytes = fs.readFileSync(path.join(out, e.filename));
     return {
       name: e.name,

@@ -21,26 +21,40 @@ function moduleDirs(dir) {
     .map((name) => path.join(dir, name));
 }
 
-// One module -> {ok, lines}.
-function validate(moduleDir) {
-  const r = spawnSync(process.execPath, [VALIDATOR, '--json', moduleDir], {encoding: 'utf8'});
-  let result = null;
-  for (const line of String(r.stdout).split('\n').reverse()) {
-    try { result = JSON.parse(line); break; } catch { /* not the result line */ }
-  }
-  const name = path.basename(moduleDir);
-  if (result == null || result.error != null || !Array.isArray(result.problems || [])) {
-    const why = result && result.error ? result.error : `the validator exited ${r.status} with no result`;
-    return {ok: false, lines: [`${name}: could not be validated: ${why}`]};
-  }
+// How long one module's validation may take before its child is stopped:
+// VALIDATE_TIMEOUT_MS, default two minutes.
+const TIMEOUT_MS = Number(process.env.VALIDATE_TIMEOUT_MS) > 0 ? Number(process.env.VALIDATE_TIMEOUT_MS) : 120 * 1000;
+
+const unvalidated = (name, why) => ({ok: false, lines: [`${name}: could not be validated: ${why}`]});
+
+// The validator's result for one module -> {ok, lines}.
+function describe(name, result) {
+  if (result == null) return unvalidated(name, 'the validator gave no result');
+  if (result.error != null) return unvalidated(name, result.error);
   const warnings = (result.warnings || []).map((w) => `  warning [${w.stage}] ${w.message}`);
   if (result.ok === true) return {ok: true, lines: [`ok: ${result.module}`, ...warnings]};
+  if (!Array.isArray(result.problems) || result.problems.length === 0) {
+    return unvalidated(name, 'the validator answered not ok with no problems listed');
+  }
   const lines = [`${result.module}: ${result.problems.length} problem(s)`];
   for (const p of result.problems) {
     lines.push(`  [${p.stage}] ${p.message}`);
     if (p.fix != null) lines.push(`      fix: ${p.fix}`);
   }
   return {ok: false, lines: [...lines, ...warnings]};
+}
+
+// One module -> {ok, lines}.
+function validate(moduleDir) {
+  const name = path.basename(moduleDir);
+  const r = spawnSync(process.execPath, [VALIDATOR, '--json', moduleDir], {encoding: 'utf8', timeout: TIMEOUT_MS, killSignal: 'SIGKILL'});
+  if (r.error && r.error.code === 'ETIMEDOUT') return unvalidated(name, `did not finish within ${Math.round(TIMEOUT_MS / 1000)} s and was stopped`);
+  if (r.error) return unvalidated(name, `the validator could not run (${r.error.code || r.error.message})`);
+  let result = null;
+  for (const line of String(r.stdout).split('\n').reverse()) {
+    try { result = JSON.parse(line); break; } catch { /* not the result line */ }
+  }
+  return describe(name, result);
 }
 
 function main(argv) {
@@ -65,4 +79,6 @@ function main(argv) {
   return bad === 0 ? 0 : 1;
 }
 
-process.exitCode = main(process.argv.slice(2));
+if (require.main === module) process.exitCode = main(process.argv.slice(2));
+
+module.exports = {describe};
