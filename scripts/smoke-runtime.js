@@ -66,7 +66,7 @@ async function main() {
   const key = 'smoke-' + crypto.randomBytes(16).toString('hex');
   fs.writeFileSync(path.join(dir, 'auth.json'), JSON.stringify({[key]: {userName: 'smoke', devices: ['*']}}, null, 2));
   const port = await choosePort();
-  const args = [FRAMEWORK, '--workerThread', '--moduleSandbox', 'enforce', '--loadModule', MODULE,
+  const args = [FRAMEWORK, '--workerThread', '--moduleSandbox', process.env.SMOKE_SANDBOX || 'enforce', '--loadModule', MODULE,
     '--bindAddr', '127.0.0.1', '--port', String(port),
     '--authConfigPath', path.join(dir, 'auth.json'), '--moduleDataPath', path.join(dir, 'module_data')];
   if (process.env.SMOKE_REDIS_URL) args.push('--redisUrl', process.env.SMOKE_REDIS_URL);
@@ -103,6 +103,7 @@ async function main() {
     if (!ok) throw new Error(`unexpected answer: ${JSON.stringify(called)}`);
     say('the call answered {text: "hello"}');
     say('pass');
+    if (process.env.SMOKE_SHOW_OUTPUT) process.stdout.write(output);
     return 0;
   } catch (err) {
     process.stderr.write(`smoke: FAIL: ${err.message}\n--- server output ---\n${output}\n`);
