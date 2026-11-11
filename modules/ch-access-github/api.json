@@ -1,0 +1,65 @@
+{
+  "device": {
+    "friendlyName": "ch-access-github",
+    "manufacturer": "ch-packs",
+    "modelDescription": "Access module of the ch-packs family: reads GitHub Actions runs, failed jobs, job logs and commit authors through GitHub's MCP server, declared as the remote 'github'. The token is the runtime's: this module never sees it.",
+    "serviceList": {
+      "urn:ch-packs:serviceID:githubService": {
+        "actionList": [
+          {
+            "name": "listRuns",
+            "description": "The repository's most recent workflow runs, newest first, every workflow: run id, GitHub's conclusion (null while in progress), head commit, branch, time, workflow name and URL. Never a commit author's name or email.",
+            "input": {
+              "schema": "/githubService/listRuns/input"
+            },
+            "output": {
+              "schema": "/githubService/listRuns/output"
+            },
+            "fault": {
+              "schema": "/fault/githubService/listRuns/fault"
+            }
+          },
+          {
+            "name": "failedJobs",
+            "description": "A run's jobs that failed or timed out, every page of them, each with every step's name and conclusion.",
+            "input": {
+              "schema": "/githubService/failedJobs/input"
+            },
+            "output": {
+              "schema": "/githubService/failedJobs/output"
+            },
+            "fault": {
+              "schema": "/fault/githubService/failedJobs/fault"
+            }
+          },
+          {
+            "name": "jobLog",
+            "description": "A job's whole log as text with its line and byte counts. A log past GitHub's retention or gone (410/404) answers expired: true with no text, not an error; truncated says the server returned fewer lines than the log has. Any other failure is the error LOG_UNAVAILABLE.",
+            "input": {
+              "schema": "/githubService/jobLog/input"
+            },
+            "output": {
+              "schema": "/githubService/jobLog/output"
+            },
+            "fault": {
+              "schema": "/fault/githubService/jobLog/fault"
+            }
+          },
+          {
+            "name": "runCommits",
+            "description": "A commit's author as a GitHub login (null when the commit is not tied to an account). Never a name or an email.",
+            "input": {
+              "schema": "/githubService/runCommits/input"
+            },
+            "output": {
+              "schema": "/githubService/runCommits/output"
+            },
+            "fault": {
+              "schema": "/fault/githubService/runCommits/fault"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
