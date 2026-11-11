@@ -151,12 +151,15 @@
                 "properties": {
                   "logins": {
                     "type": "array",
+                    "maxItems": 3,
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$"
                     }
                   },
                   "why": {
                     "type": "array",
+                    "maxItems": 3,
                     "items": {
                       "type": "string"
                     }
@@ -368,12 +371,15 @@
                 "properties": {
                   "logins": {
                     "type": "array",
+                    "maxItems": 3,
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$"
                     }
                   },
                   "why": {
                     "type": "array",
+                    "maxItems": 3,
                     "items": {
                       "type": "string"
                     }

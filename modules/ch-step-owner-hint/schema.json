@@ -21,7 +21,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}(?:\\[bot\\])?$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$"
                       },
                       {
                         "type": "null"
@@ -54,7 +54,7 @@
                   "anyOf": [
                     {
                       "type": "string",
-                      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}(?:\\[bot\\])?$"
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$"
                     },
                     {
                       "type": "null"
@@ -84,7 +84,7 @@
             "maxItems": 3,
             "items": {
               "type": "string",
-              "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}(?:\\[bot\\])?$"
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$"
             }
           },
           "why": {
