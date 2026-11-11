@@ -17,7 +17,7 @@
 // is found with a single forward scan, and so is a private key block (PGP's
 // "PRIVATE KEY BLOCK" included), never [\s\S]*?.
 
-const TYPES = ['bearerToken', 'githubToken', 'awsKey', 'privateKey', 'jwt', 'basicAuthUrl', 'email', 'ipv4', 'card', 'phone'];
+const TYPES = ['bearerToken', 'githubToken', 'awsKey', 'apiKey', 'secret', 'privateKey', 'jwt', 'basicAuthUrl', 'email', 'ipv4', 'card', 'phone'];
 
 const EMAIL = '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}';
 
@@ -25,7 +25,8 @@ const EMAIL = '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}';
 // beginning of a run of local-part characters (linear on a long run with no
 // @); a sticky copy without the lookbehind takes a match starting exactly
 // where the previous one ended (a@b.com_c@d.org).
-const EMAIL_SEARCH = new RegExp(`(?<![A-Za-z0-9._%+-])${EMAIL}`, 'g');
+// Not right after '://': a URL's user part (ssh://git@github.com) is no address.
+const EMAIL_SEARCH = new RegExp(`(?<![A-Za-z0-9._%+-])(?<!:\\/\\/)${EMAIL}`, 'g');
 const EMAIL_RESUME = new RegExp(EMAIL, 'y');
 
 function maskEmails(line, tag) {
@@ -79,20 +80,42 @@ function maskJwts(line, tag) {
   return {text: out + line.slice(pos), n};
 }
 
+function luhn(match) {
+  const digits = match.replace(/\D/g, '');
+  let sum = 0;
+  for (let i = 0; i < digits.length; i++) {
+    let d = digits.charCodeAt(digits.length - 1 - i) - 48;
+    if (i % 2 === 1) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+  }
+  return sum % 10 === 0;
+}
+
 // Applied in this order, to every line, after private key blocks are gone.
 // A URL's credentials before a token type, so a token used as a URL password
 // is masked (and counted) once.
 const PATTERNS = [
   {type: 'jwt', tag: '<jwt>', mask: maskJwts},
-  {type: 'basicAuthUrl', tag: '://<basicAuth>@', re: /:\/\/(?:[^/:@\s]{1,1024}(?::[^/@\s]{0,1024})?|:[^/@\s]{1,1024})@/g},
+  // A password is required: a bare user (ssh://git@github.com) is no secret.
+  {type: 'basicAuthUrl', tag: '://<basicAuth>@', re: /:\/\/[^/:@\s]{0,1024}:[^/@\s]{1,1024}@/g},
   {type: 'githubToken', tag: '<githubToken>', re: /(?<![A-Za-z0-9])(?:gh[oprsu]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})/g},
   {type: 'awsKey', tag: '<awsKey>', re: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g},
   {type: 'awsKey', tag: '$1$2<awsKey>', re: /\b(aws_secret_access_key)(\s*[=:]\s*)["']?[A-Za-z0-9/+]{40}["']?/gi},
   {type: 'bearerToken', tag: '<token>', re: /\bbearer\s+[A-Za-z0-9._~+/-]{16,}=*/gi},
   {type: 'bearerToken', tag: '<token>', re: /\bbasic\s+[A-Za-z0-9+/]{16,}={0,2}/gi},
   {type: 'bearerToken', tag: '$1<token>', re: /(authorization:\s*)token\s+[A-Za-z0-9_-]{16,}/gi},
+  // Vendors' key shapes: Slack, Stripe (secret and restricted), Google, npm.
+  {type: 'apiKey', tag: '<apiKey>', re: /(?<![A-Za-z0-9])(?:xox[baprs]-[A-Za-z0-9-]{10,}|[sr]k_(?:live|test)_[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{35}|npm_[A-Za-z0-9]{36})(?![A-Za-z0-9])/g},
+  // A secret assigned in an environment dump, a config or a command line
+  // (DB_PASSWORD=…, api_key: …, "client_secret": "…"): the value goes, the
+  // name stays; a value an earlier rule already tagged is left alone.
+  {type: 'secret', tag: '$1$2<secret>', re: /\b([A-Za-z0-9_]*?(?:password|passwd|secret|token|api[_-]?key))(["']?\s*[=:]\s*["']?)(?!<)[^\s"',;]+/gi},
   {type: 'email', tag: '<email>', mask: maskEmails},
-  {type: 'card', tag: '<card>', re: /\b(?:\d[ -]?){12,18}\d\b/g},
+  // A card number passes the Luhn check; a 13-digit epoch millisecond mostly does not.
+  {type: 'card', tag: '<card>', re: /\b(?:\d[ -]?){12,18}\d\b/g, accept: luhn},
   {type: 'ipv4', tag: '<ipv4>', re: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g},
   {type: 'phone', tag: '<phone>', re: /(?:\+\d{1,3}[-. ]?)?(?:\(\d{3}\)|\d{3})[-. ]\d{3}[-. ]\d{4}\b/g}
 ];
@@ -152,6 +175,7 @@ function redactLines(lines) {
         counts[p.type] += r.n;
       } else {
         out = out.replace(p.re, (...m) => {
+          if (p.accept && !p.accept(m[0])) return m[0];
           counts[p.type]++;
           return p.tag.replace(/\$(\d)/g, (_, i) => m[Number(i)]);
         });

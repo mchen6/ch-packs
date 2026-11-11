@@ -85,7 +85,7 @@ test('the pii rules of the example still hold', () => {
 test('counts carry every type, zero included', () => {
   const r = redactLines(['nothing here']);
   assert.deepStrictEqual(Object.keys(r.counts).sort(), [...TYPES].sort());
-  assert.deepStrictEqual(TYPES, ['bearerToken', 'githubToken', 'awsKey', 'privateKey', 'jwt', 'basicAuthUrl', 'email', 'ipv4', 'card', 'phone']);
+  assert.deepStrictEqual(TYPES, ['bearerToken', 'githubToken', 'awsKey', 'apiKey', 'secret', 'privateKey', 'jwt', 'basicAuthUrl', 'email', 'ipv4', 'card', 'phone']);
   assert.ok(Object.values(r.counts).every((n) => n === 0));
 });
 
@@ -139,7 +139,6 @@ test('URL credentials: long, password-only or user-only are masked; a port and a
   const long = 'p'.repeat(300);
   assert.deepStrictEqual(redactLines([`https://${userinfo('u', long)}@host/x`]).lines, ['https://<basicAuth>@host/x']);
   assert.deepStrictEqual(redactLines([`https://${userinfo('', 'hunter2' + 'hunter2')}@host/x`]).lines, ['https://<basicAuth>@host/x']);
-  assert.deepStrictEqual(redactLines(['git clone https://' + 'T'.repeat(30) + '@github.com/o/r']).lines, ['git clone https://<basicAuth>@github.com/o/r']);
   const r = redactLines(['see https://example.com:443/u/alice@example.com']);
   assert.deepStrictEqual(r.lines, ['see https://example.com:443/u/<email>']);
   assert.strictEqual(r.counts.basicAuthUrl, 0);
@@ -160,4 +159,45 @@ test('Basic and token authorization headers, AWS secret keys, and a GitHub token
     'GH_TOKEN_' + GHP
   ]);
   assert.deepStrictEqual(r.lines, ['Authorization: <token>', 'Authorization: <token>', 'aws_secret_access_key = <awsKey>', 'AWS_SECRET_ACCESS_KEY=<awsKey>', 'GH_TOKEN_<githubToken>']);
+});
+
+// From the reviewer's range review of Tasks 1-7 (task-7b).
+test('a digit run that fails the Luhn check is not a card: epoch milliseconds stay', () => {
+  const r = redactLines(['at 1794304800000 ms', 'card 4111 1111 1111 1111']);
+  assert.deepStrictEqual(r.lines, ['at 1794304800000 ms', 'card <card>']);
+  assert.strictEqual(r.counts.card, 1);
+});
+
+test('a bare user before @ is not a credential: git+ssh and user-only URLs stay', () => {
+  const r = redactLines(['npm error command git --no-replace-objects ls-remote ssh://' + 'git@github.com/o/r.git', 'https://' + 'T'.repeat(30) + '@example.org/x']);
+  assert.deepStrictEqual(r.lines, ['npm error command git --no-replace-objects ls-remote ssh://' + 'git@github.com/o/r.git', 'https://' + 'T'.repeat(30) + '@example.org/x']);
+  assert.strictEqual(r.counts.basicAuthUrl, 0);
+});
+
+test('vendor token shapes are masked as apiKey: Slack, Stripe, Google, npm', () => {
+  const r = redactLines([
+    'SLACK ' + 'xox' + 'b-' + '1234567890-abcdefghij',
+    'key ' + 'sk_' + 'live_' + 'a'.repeat(24) + ' and ' + 'sk_' + 'test_' + 'b'.repeat(24),
+    'g ' + 'AI' + 'za' + 'C'.repeat(35),
+    'n ' + 'np' + 'm_' + 'd'.repeat(36)
+  ]);
+  assert.deepStrictEqual(r.lines, ['SLACK <apiKey>', 'key <apiKey> and <apiKey>', 'g <apiKey>', 'n <apiKey>']);
+  assert.strictEqual(r.counts.apiKey, 5);
+});
+
+test('a secret assigned in an environment dump or a command line has its value masked', () => {
+  const pw = ['hunt', 'er2'].join('');
+  const r = redactLines([
+    `DB_PASS${'WORD'}=${pw}`,
+    `  api_key: ${pw}x`,
+    `curl --data "pass${'wd'}=${pw}"`,
+    `"client_sec${'ret'}": "${pw}"`,
+    `GITHUB_TOK${'EN'}=<githubToken>`,
+    'max_tokens: 5'
+  ]);
+  assert.deepStrictEqual(r.lines, [
+    'DB_PASSWORD=<secret>', '  api_key: <secret>', 'curl --data "passwd=<secret>"', '"client_secret": "<secret>"',
+    'GITHUB_TOKEN=<githubToken>', 'max_tokens: 5'
+  ]);
+  assert.strictEqual(r.counts.secret, 4);
 });

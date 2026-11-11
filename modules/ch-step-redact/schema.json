@@ -46,6 +46,14 @@
                 "type": "integer",
                 "minimum": 0
               },
+              "apiKey": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "secret": {
+                "type": "integer",
+                "minimum": 0
+              },
               "privateKey": {
                 "type": "integer",
                 "minimum": 0
@@ -79,6 +87,8 @@
               "bearerToken",
               "githubToken",
               "awsKey",
+              "apiKey",
+              "secret",
               "privateKey",
               "jwt",
               "basicAuthUrl",
