@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "ci-failure-triage": {
+      "command": "/usr/local/bin/node",
+      "args": [
+        "/home/dev/.countinghouse/bin/ch-local.js",
+        "start",
+        "--pack",
+        "ci-failure-triage",
+        "--stdio"
+      ],
+      "env": {
+        "COUNTINGHOUSE_GITHUB_TOKEN": "${env:COUNTINGHOUSE_GITHUB_TOKEN}",
+        "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+'use strict';
+// Each client's config entry for the installed launcher (spec §3). Pure: the
+// node and launcher paths come in, the text goes out. Credentials are named,
+// never given a value.
+const SERVER = 'ci-failure-triage';
+const PACK = 'ci-failure-triage';
+const CREDENTIALS = ['COUNTINGHOUSE_GITHUB_TOKEN', 'GITHUB_TOKEN'];
+const CLIENTS = ['claude-code', 'cursor', 'vscode', 'codex', 'claude-desktop'];
+
+const argsOf = (launcher) => [launcher, 'start', '--pack', PACK, '--stdio'];
+const json = (obj) => JSON.stringify(obj, null, 2) + '\n';
+// A TOML basic string: JSON's escapes are TOML's.
+const toml = (s) => JSON.stringify(s);
+// A shell word: bare when it is plainly safe, else single-quoted.
+const word = (s) => (/^[A-Za-z0-9_./:=@%+,-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`);
+
+const RENDER = {
+  // https://code.claude.com/docs/en/mcp: `claude mcp add [options] <name> -- <command> [args...]`;
+  // ${VAR:-default} expands in command, args, env, url and headers of user-scoped entries too.
+  'claude-code': ({node, launcher}) => [
+    'claude mcp add --scope user', SERVER,
+    ...CREDENTIALS.map((name) => `--env ${word(`${name}=\${${name}:-}`)}`),
+    '--', ...[node, ...argsOf(launcher)].map(word)
+  ].join(' ') + '\n',
+  // https://cursor.com/docs/context/mcp: ${env:NAME} resolves in command, args, env, url, headers.
+  // No `type` (Cursor's docs show entries without it).
+  cursor: ({node, launcher}) => json({mcpServers: {[SERVER]: {
+    command: node,
+    args: argsOf(launcher),
+    env: Object.fromEntries(CREDENTIALS.map((name) => [name, `\${env:${name}}`]))
+  }}}),
+  // ~/.copilot/mcp-config.json, the portable format: the child inherits the
+  // environment, and the format has no secret store, so no env block.
+  vscode: ({node, launcher}) => json({mcpServers: {[SERVER]: {type: 'stdio', command: node, args: argsOf(launcher)}}}),
+  // https://learn.chatgpt.com/docs/extend/mcp?surface=cli: env_vars whitelists variables
+  // forwarded from Codex's own environment.
+  codex: ({node, launcher}) => [
+    `[mcp_servers.${SERVER}]`,
+    `command = ${toml(node)}`,
+    `args = [${argsOf(launcher).map(toml).join(', ')}]`,
+    `env_vars = [${CREDENTIALS.map(toml).join(', ')}]`
+  ].join('\n') + '\n',
+  'claude-desktop': () => [
+    'Claude Desktop has no config entry to paste.',
+    'Desktop does not see your shell\'s environment, and a GitHub token is never written to a config file,',
+    'so the route for Desktop is the .mcpb bundle, which keeps the token in the OS keychain.',
+    'The bundle is not built yet.'
+  ].join('\n') + '\n'
+};
+
+// {node, launcher} -> {text}. Throws on an unknown client.
+function snippet(client, {node, launcher}) {
+  if (!Object.prototype.hasOwnProperty.call(RENDER, client)) {
+    throw new Error(`unknown client "${client}"; one of: ${CLIENTS.join(', ')}`);
+  }
+  return {text: RENDER[client]({node, launcher})};
+}
+
+module.exports = {snippet, CLIENTS, SERVER, PACK};
