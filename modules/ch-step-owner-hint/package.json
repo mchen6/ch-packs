@@ -1,0 +1,21 @@
+{
+  "name": "@SCOPE/ch-step-owner-hint",
+  "version": "0.1.0",
+  "description": "countinghouse step module: who might know about a CI failure, as GitHub logins only: the author of the commit where it first appeared and of recent changes.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.16"
+  },
+  "files": [
+    "api.json",
+    "schema.json",
+    "handlers/",
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "countinghouse": {
+    "role": "part"
+  }
+}

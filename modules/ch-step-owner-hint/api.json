@@ -1,0 +1,20 @@
+{
+  "device": {
+    "friendlyName": "ch-step-owner-hint",
+    "manufacturer": "ch-packs",
+    "modelDescription": "Step module of the ch-packs family: suggests who might know about a CI failure, as GitHub logins only, never e-mail addresses or display names. A suggestion, never an action. A pure function of its input: no disk, no network, no state.",
+    "serviceList": {
+      "urn:ch-packs:serviceID:ownerService": {
+        "actionList": [
+          {
+            "name": "hint",
+            "description": "Takes the commit where a failure first appeared and the recent commits before it, each with its author's GitHub login or null, and returns at most three logins: the first-seen commit's author first, then the recent changes' authors in the order given, each once, with one sentence per login saying why it is there. Refuses anything that is not a GitHub login (an e-mail address, a display name), so none can pass through.",
+            "input": {"schema": "/ownerService/hint/input"},
+            "output": {"schema": "/ownerService/hint/output"},
+            "fault": {"schema": "/fault/ownerService/hint/fault"}
+          }
+        ]
+      }
+    }
+  }
+}
