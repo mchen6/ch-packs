@@ -42,6 +42,14 @@ test('runner and tool patterns', () => {
     ['Error: ENOENT: no such file or directory', ['error']],
     ['java.lang.IllegalStateException: closed', ['error']],
     ['npm error code 1', ['error']],
+    ['    console.error', []],
+    ['PASS tests/error.test.js', []],
+    ['  ● adds › two numbers', ['error']],
+    ['    expect(received).toBe(expected) // Object.is equality', ['assert']],
+    ['    Expected: 4', ['assert']],
+    ['    Received: 3', ['assert']],
+    ['error[E0308]: mismatched types', ['error']],
+    ['a.c:3:5: error: expected ; before }', ['error']],
     ['src/a.ts(3,1): error TS2304: Cannot find name', ['error']],
     ['panic: runtime error: index out of range', ['error']],
     ['fatal: not a git repository', ['error']],
@@ -130,4 +138,46 @@ test('handler validates maxLines range', async () => {
 
 test('the module is a part: never listed', () => {
   assert.deepStrictEqual(require('../package.json').countinghouse, {role: 'part'});
+});
+
+// From the reviewer's range review of Tasks 1-7 (task-7b).
+const conclusions = (...pairs) => pairs.map(([name, conclusion]) => ({name, conclusion}));
+
+test('the jobs API step conclusions decide the failing step: a later if: always() step that fails is not it', () => {
+  const steps = [
+    {name: '(top)', lines: ['set up']},
+    {name: 'Run make build', lines: ['error: build broke', '##[error]Process completed with exit code 2.']},
+    {name: 'Run ./upload-logs.sh', lines: ['##[error]Process completed with exit code 1.']},
+    {name: 'Post job cleanup', lines: ['bye']}
+  ];
+  assert.strictEqual(extractErrors(steps, 40).failingStep, 'Run ./upload-logs.sh'); // the log alone guesses wrong
+  const api = conclusions(['Set up job', 'success'], ['Lint', 'skipped'], ['Build', 'failure'], ['Upload logs', 'failure'], ['Post Run actions/checkout@v4', 'success'], ['Complete job', 'success']);
+  assert.strictEqual(extractErrors(steps, 40, api).failingStep, 'Run make build'); // by position, named steps
+  const byName = conclusions(['Set up job', 'success'], ['Run make build', 'failure'], ['Run ./upload-logs.sh', 'failure'], ['Extra', 'success']);
+  assert.strictEqual(extractErrors(steps, 40, byName).failingStep, 'Run make build'); // by name, counts differ
+});
+
+test('a continue-on-error step (conclusion success) is passed over; conclusions that cannot be matched fall back to the log', () => {
+  const steps = [{name: 'Run flaky', lines: ['##[error]Process completed with exit code 1.']}, {name: 'Run test', lines: ['Error: x', '##[error]Process completed with exit code 1.']}];
+  assert.strictEqual(extractErrors(steps, 40, conclusions(['Flaky', 'success'], ['Test', 'failure'])).failingStep, 'Run test');
+  assert.strictEqual(extractErrors(steps, 40, conclusions(['A', 'failure'], ['B', 'success'], ['C', 'success'])).failingStep, 'Run test');
+  assert.strictEqual(extractErrors(steps, 40, conclusions(['A', 'success'])).failingStep, 'Run test');
+});
+
+test('console.error blocks do not displace a Jest failure under maxLines', () => {
+  const lines = [];
+  for (let i = 0; i < 40; i++) lines.push('    console.error', `      warning ${i} from tests/error.test.js`, '');
+  lines.push('  ● adds › two numbers', '    expect(received).toBe(expected) // Object.is equality', '    Expected: 4', '    Received: 3',
+    '      at Object.<anonymous> (tests/add.test.js:3:9)', '##[error]Process completed with exit code 1.');
+  const out = extractErrors([{name: 'Run npx jest', lines}], 10);
+  assert.deepStrictEqual(out.lines.filter((l) => l.kind !== 'tail').map((l) => l.kind), ['error', 'assert', 'assert', 'assert', 'stack', 'exit']);
+});
+
+test('handler validates stepConclusions', async () => {
+  const invalid = (err) => err.code === 'ARGUMENTS_INVALID';
+  for (const bad of [{steps: [], stepConclusions: 'x'}, {steps: [], stepConclusions: [{name: 'a'}]}, {steps: [], stepConclusions: [{name: 1, conclusion: 'failure'}]}]) {
+    await assert.rejects(extract(bad), invalid, JSON.stringify(bad));
+  }
+  const {output} = await extract({steps: [{name: 'Run a', lines: ['Error: x']}], stepConclusions: conclusions(['A', 'failure'])});
+  assert.strictEqual(output.failingStep, 'Run a');
 });

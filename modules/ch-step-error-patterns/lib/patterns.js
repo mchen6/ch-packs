@@ -6,11 +6,14 @@
 //   exit    "Process completed with exit code N", N > 0: the line that marks
 //           the failing step;
 //   error   a ##[error] line, an error or exception name (TypeError,
-//           IllegalStateException), "error" or "ERROR" as a word (npm, tsc,
-//           gcc, pip, Maven), FAIL/FAILED, panic:, fatal:, TAP's "not ok"
-//           (not with # SKIP or # TODO), node --test's ✖;
+//           IllegalStateException), the word "error" where tools print it as
+//           a verdict (at the start of a line, "npm error", "error:",
+//           "error[E0308]:", "error TS2304"; not console.error or a file
+//           called error.test.js), "ERROR", FAIL/FAILED, panic:, fatal:, TAP's
+//           "not ok" (not with # SKIP or # TODO), node --test's ✖, Jest's ●;
 //   assert  one of those that says Assertion or Expected, or "expected …"
-//           with to, but, got, received or actual (not tsc's "';' expected");
+//           with to, but, got, received or actual (not tsc's "';' expected"),
+//           and Jest's expect(…), Expected: and Received: lines;
 //   stack   a stack frame (JavaScript "  at …", Python '  File "…"'), never an
 //           error itself whatever it names: the first two within ten lines
 //           after an error or assertion, and for a Python traceback its head
@@ -18,11 +21,31 @@
 //           last);
 //   tail    when fewer than five lines matched: the last fifteen lines of the
 //           failing step (or of the last step that ran a command).
-// failingStep is the step holding the last exit line, else the last step with
-// an error line, else null.
+// failingStep comes from the jobs API's step conclusions when they are given
+// and can be matched to the log's steps: the first step whose conclusion is
+// failure (a continue-on-error step's conclusion is success), matched by name,
+// else by position among the steps that ran commands. Otherwise from the log:
+// the step holding the last exit line, else the last step with an error line,
+// else null.
+
+const API_SETUP = /^(?:Set up job|Complete job)$|^Post /;
+const isLogCommandStep = (name) => name !== '(top)' && name !== 'Post job cleanup';
+
+// -> the index in steps of the failed step the conclusions name, or null.
+function failedFromConclusions(steps, stepConclusions) {
+  if (!Array.isArray(stepConclusions)) return null;
+  const ran = stepConclusions.filter((c) => c.conclusion !== 'skipped' && !API_SETUP.test(c.name));
+  const k = ran.findIndex((c) => c.conclusion === 'failure');
+  if (k === -1) return null;
+  const byName = steps.findIndex((s) => s.name === ran[k].name);
+  if (byName !== -1) return byName;
+  const logSteps = steps.map((s, i) => i).filter((i) => isLogCommandStep(steps[i].name));
+  return logSteps.length === ran.length ? logSteps[k] : null;
+}
 
 const EXIT = /Process completed with exit code [1-9]\d*/;
-const ERROR = /^##\[error\]|\b(?:[A-Z][A-Za-z]*)?(?:Error|Exception)\b|\berror\b|\bERROR\b|\bFAIL(?:ED)?\b|\b(?:panic|fatal):|^\s*not ok\b|^\s*✖/;
+const ERROR = /^##\[error\]|\b(?:[A-Z][A-Za-z]*)?(?:Error|Exception)\b|^\s*(?:npm\s+)?error\b|(?<!\.)\berror(?:\[\w+\])?:|\berror\s+[A-Z]+\d+|\bERROR\b|\bFAIL(?:ED)?\b|\b(?:panic|fatal):|^\s*not ok\b|^\s*[✖●]/;
+const JEST_ASSERT = /^\s*expect\(|^\s*(?:Expected|Received)(?: [\w ]+)?:/;
 const TAP_DIRECTIVE = /^\s*not ok\b.*#\s*(?:SKIP|TODO)\b/i;
 const ASSERT = /Assertion|\bExpected\b|\bexpected\b(?=.*\b(?:to|but|got|received|actual)\b)/;
 const TRACEBACK = /^\s*Traceback \(most recent call last\):/;
@@ -39,6 +62,7 @@ const RANK = {exit: 0, error: 1, assert: 1, stack: 1, tail: 2};
 function classify(text) {
   if (EXIT.test(text)) return 'exit';
   if (FRAME.test(text) || TAP_DIRECTIVE.test(text)) return null;
+  if (JEST_ASSERT.test(text)) return 'assert';
   if (ERROR.test(text)) return ASSERT.test(text) ? 'assert' : 'error';
   if (TRACEBACK.test(text)) return 'stack';
   return null;
@@ -48,7 +72,7 @@ function classify(text) {
 // in log order. Over maxLines, the failing step's lines are kept first, by kind
 // (exit, then errors and assertions, then frames, then the tail), earlier
 // before later.
-function extractErrors(steps, maxLines) {
+function extractErrors(steps, maxLines, stepConclusions) {
   const found = []; // {s, index, text, kind}
   steps.forEach((step, s) => {
     const kinds = step.lines.map(classify);
@@ -78,7 +102,8 @@ function extractErrors(steps, maxLines) {
   // The last exit line: an earlier one is a continue-on-error step's.
   const exitAt = found.findLast((l) => l.kind === 'exit');
   const lastError = found.findLast((l) => l.kind === 'error' || l.kind === 'assert');
-  const failing = exitAt ? exitAt.s : lastError ? lastError.s : null;
+  const fromApi = failedFromConclusions(steps, stepConclusions);
+  const failing = fromApi !== null ? fromApi : exitAt ? exitAt.s : lastError ? lastError.s : null;
 
   if (found.length < TAIL_BELOW) {
     let t = failing;

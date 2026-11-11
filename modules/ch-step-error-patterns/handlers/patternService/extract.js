@@ -17,5 +17,10 @@ module.exports = async (input) => {
   if (!Number.isInteger(maxLines) || maxLines < 1 || maxLines > MAX) {
     throw new DeviceError('ARGUMENTS_INVALID', `maxLines must be an integer from 1 to ${MAX}`);
   }
-  return {output: extractErrors(steps, maxLines)};
+  const stepConclusions = input.stepConclusions;
+  if (stepConclusions !== undefined && !(Array.isArray(stepConclusions)
+    && stepConclusions.every((c) => c != null && typeof c.name === 'string' && typeof c.conclusion === 'string'))) {
+    throw new DeviceError('ARGUMENTS_INVALID', 'stepConclusions must be [{name, conclusion}], the job\'s steps as the jobs API lists them');
+  }
+  return {output: extractErrors(steps, maxLines, stepConclusions)};
 };

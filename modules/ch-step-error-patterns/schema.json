@@ -36,6 +36,32 @@
             "minimum": 1,
             "maximum": 200,
             "default": 40
+          },
+          "stepConclusions": {
+            "title": "the job's steps as the jobs API lists them, when known: the failing step is the first failed one",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "conclusion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "number": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "name",
+                "conclusion"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
