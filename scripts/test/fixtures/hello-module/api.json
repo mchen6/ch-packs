@@ -1,0 +1,19 @@
+{
+  "device": {
+    "friendlyName": "hello-module",
+    "manufacturer": "ch-packs",
+    "modelDescription": "A one-action test fixture: answers hello.",
+    "serviceList": {
+      "urn:ch-packs:serviceID:helloService": {
+        "actionList": [
+          {
+            "name": "hello",
+            "description": "Answers {text: 'hello'}. A fixture for the runtime smoke test.",
+            "input": {"schema": "/helloService/hello/input"},
+            "output": {"schema": "/helloService/hello/output"}
+          }
+        ]
+      }
+    }
+  }
+}
