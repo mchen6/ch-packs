@@ -31,9 +31,12 @@ const TOP = '(top)';
 
 // What a terminal would show of one raw line: carriage returns at its end are
 // the line ending's, one inside it is a progress bar redrawing itself.
+// Linear: a regex /\r+$/ rescans a long run of CRs from every start.
 function shown(rawLine) {
-  const line = rawLine.replace(/\r+$/, '');
-  return line.includes('\r') ? line.slice(line.lastIndexOf('\r') + 1) : line;
+  let end = rawLine.length;
+  while (end > 0 && rawLine.charCodeAt(end - 1) === 13) end--;
+  const cr = rawLine.lastIndexOf('\r', end - 1);
+  return cr === -1 ? rawLine.slice(0, end) : rawLine.slice(cr + 1, end);
 }
 
 // -> {steps: [{name, lines}], totalLines, kept}: totalLines counts the input's
@@ -61,7 +64,10 @@ function cleanLog(text) {
     const group = GROUP.exec(line);
     if (group) {
       const next = i + 1 < visible.length ? visible[i + 1] : '';
-      if (STEP_HEADER.test(group[1]) && (next.startsWith(CYAN) || USES_BLOCK.test(next.replace(ANSI, '')))) {
+      // A header holds the cyan command echo, a uses: step's with:/env: block,
+      // or nothing at all (an action with no inputs).
+      const nextLine = next.replace(ANSI, '');
+      if (STEP_HEADER.test(group[1]) && (next.startsWith(CYAN) || USES_BLOCK.test(nextLine) || ENDGROUP.test(nextLine))) {
         open(group[1].trim());
         inHeader = true;
       }

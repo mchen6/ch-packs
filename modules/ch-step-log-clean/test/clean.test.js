@@ -134,3 +134,21 @@ test('handler wraps cleanLog and refuses a non-string', async () => {
 test('the module is a part: never listed', () => {
   assert.deepStrictEqual(require('../package.json').countinghouse, {role: 'part'});
 });
+
+// From the reviewer's range review of Tasks 1-7 (task-7b).
+test('a long run of carriage returns inside a line stays linear', () => {
+  const text = [...header('progress'), 'x' + '\r'.repeat(200000) + 'done', 'y' + '\r'.repeat(200000)].join('\n');
+  const start = Date.now();
+  const out = cleanLog(text);
+  const ms = Date.now() - start;
+  assert.deepStrictEqual(out.steps[0].lines, ['done', 'y']);
+  assert.ok(ms < 1000, `took ${ms} ms`);
+});
+
+test('a uses: step whose header group is empty is still a step', () => {
+  const out = cleanLog([...header('make'), 'built', '##[group]Run ./.github/actions/mine', '##[endgroup]', 'action output', '##[error]Process completed with exit code 1.'].join('\n'));
+  assert.deepStrictEqual(out.steps, [
+    {name: 'Run make', lines: ['built']},
+    {name: 'Run ./.github/actions/mine', lines: ['action output', '##[error]Process completed with exit code 1.']}
+  ]);
+});
