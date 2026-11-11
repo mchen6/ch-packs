@@ -1,0 +1,21 @@
+{
+  "name": "@SCOPE/ch-step-redact",
+  "version": "0.1.0",
+  "description": "countinghouse step module: masks secrets and personal data in text lines before any line can reach a result.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.16"
+  },
+  "files": [
+    "api.json",
+    "schema.json",
+    "handlers/",
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "countinghouse": {
+    "role": "part"
+  }
+}
