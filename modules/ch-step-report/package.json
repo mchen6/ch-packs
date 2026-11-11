@@ -1,0 +1,21 @@
+{
+  "name": "@SCOPE/ch-step-report",
+  "version": "0.1.0",
+  "description": "countinghouse step module: the CI triage result assembled, with its one-sentence summary and a fixed field order.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.16"
+  },
+  "files": [
+    "api.json",
+    "schema.json",
+    "handlers/",
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "countinghouse": {
+    "role": "part"
+  }
+}
