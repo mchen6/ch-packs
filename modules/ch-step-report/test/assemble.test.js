@@ -54,6 +54,12 @@ test('assemble keeps field order', () => {
   assert.strictEqual(JSON.stringify(out).includes('receipt'), false, 'the runtime adds the receipt, not this module');
 });
 
+test("the report passes owner-hint's logins through: their shape is owner-hint's to check", async () => {
+  const hint = {logins: ['legacy-'], why: ['legacy-: author of a1b2c3d, the commit where this failure first appeared']};
+  const {output} = await assemble({...fixture(), ownerHint: hint});
+  assert.deepStrictEqual(output.owner_hint, hint);
+});
+
 test('an absent owner hint is null', () => {
   assert.strictEqual(assembleReport({...fixture(), ownerHint: null}).owner_hint, null);
 });
@@ -64,7 +70,7 @@ test('handler validates its input', async () => {
   for (const bad of [{}, null, {...f, run: null}, {...f, run: {...f.run, step: 7}}, {...f, errors: [1]}, {...f, history: {...f.history, verdict: 'odd'}},
     {...f, history: {...f.history, count: 0}}, {...f, coverage: null}, {...f, extra: 1},
     {...f, history: {...f.history, count: 3}}, {...f, history: {...f.history, verdict: 'new'}},
-    {...f, ownerHint: {logins: ['octo@example.com'], why: ['x']}}, {...f, ownerHint: {logins: ['a', 'b'], why: ['a: x']}},
+    {...f, ownerHint: {logins: [7], why: ['x']}}, {...f, ownerHint: {logins: ['a', 'b'], why: ['a: x']}},
     {...f, ownerHint: {logins: ['a', 'b', 'c', 'd'], why: ['1', '2', '3', '4']}}]) {
     await assert.rejects(assemble(bad), invalid, JSON.stringify(bad).slice(0, 80));
   }

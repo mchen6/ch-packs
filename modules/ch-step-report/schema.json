@@ -150,11 +150,11 @@
                 "type": "object",
                 "properties": {
                   "logins": {
+                    "title": "GitHub logins, as ch-step-owner-hint returns them",
                     "type": "array",
                     "maxItems": 3,
                     "items": {
-                      "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$"
+                      "type": "string"
                     }
                   },
                   "why": {
@@ -370,11 +370,11 @@
                 "type": "object",
                 "properties": {
                   "logins": {
+                    "title": "GitHub logins, as ch-step-owner-hint returns them",
                     "type": "array",
                     "maxItems": 3,
                     "items": {
-                      "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\\[bot\\])?$"
+                      "type": "string"
                     }
                   },
                   "why": {

@@ -7,14 +7,14 @@ const INPUT = ['run', 'errors', 'history', 'ownerHint', 'coverage'];
 const VERDICTS = ['new', 'flaky', 'recurring'];
 const isObject = (x) => x != null && typeof x === 'object' && !Array.isArray(x);
 const isSeen = (s) => isObject(s) && typeof s.commit === 'string';
-// GitHub logins only (ch-step-owner-hint's rule): never an e-mail address.
-const LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\[bot\])?$/;
 const isHistory = (h) => h === null || (isObject(h) && Number.isInteger(h.count) && h.count >= 1 && Number.isInteger(h.window) && h.window >= 1
   && VERDICTS.includes(h.verdict) && isSeen(h.firstSeen) && isSeen(h.lastSeen)
   && Array.isArray(h.runIds) && h.runIds.length === h.count && (h.verdict !== 'new' || h.count === 1));
 const isHint = (o) => o === null || (isObject(o) && Array.isArray(o.logins) && Array.isArray(o.why)
   && o.logins.length <= 3 && o.logins.length === o.why.length
-  && o.logins.every((l) => typeof l === 'string' && LOGIN.test(l)) && o.why.every((w) => typeof w === 'string'));
+  && o.logins.every((l) => typeof l === 'string') && o.why.every((w) => typeof w === 'string'));
+// The logins' shape is ch-step-owner-hint's to check (it refuses anything that
+// is not a GitHub login); this step only passes them through.
 
 module.exports = async (input) => {
   const ok = isObject(input) && Object.keys(input).every((k) => INPUT.includes(k))
