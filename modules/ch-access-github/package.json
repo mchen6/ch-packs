@@ -1,0 +1,34 @@
+{
+  "name": "@SCOPE/ch-access-github",
+  "version": "0.1.0",
+  "description": "countinghouse access module: a typed surface over GitHub's MCP server for workflow runs, failed jobs, job logs and commit authors.",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.16"
+  },
+  "files": [
+    "api.json",
+    "schema.json",
+    "handlers/",
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "countinghouse": {
+    "role": "part",
+    "remotes": [
+      {
+        "name": "github",
+        "transport": "streamable-http",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "credential": {
+          "env": "COUNTINGHOUSE_GITHUB_TOKEN",
+          "fallbackEnv": "GITHUB_TOKEN",
+          "header": "Authorization",
+          "scheme": "Bearer"
+        }
+      }
+    ]
+  }
+}

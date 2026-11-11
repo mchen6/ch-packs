@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "#/",
+  "type": "object",
+  "githubService": {
+    "listRuns": {
+      "input": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "title": "owner/name",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$"
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "repo",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "runId": {
+                  "type": "string"
+                },
+                "conclusion": {
+                  "title": "GitHub's conclusion; null while in progress",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "commit": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "workflow": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "runId",
+                "conclusion",
+                "commit",
+                "branch",
+                "createdAt",
+                "workflow",
+                "url"
+              ]
+            }
+          }
+        },
+        "required": [
+          "runs"
+        ]
+      }
+    },
+    "failedJobs": {
+      "input": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "title": "owner/name",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$"
+          },
+          "runId": {
+            "title": "run id",
+            "type": "string",
+            "pattern": "^[1-9]\\d{0,15}$"
+          }
+        },
+        "required": [
+          "repo",
+          "runId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "jobs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "jobId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "conclusion": {
+                  "type": "string",
+                  "enum": [
+                    "failure",
+                    "timed_out"
+                  ]
+                },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "conclusion": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "conclusion"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "jobId",
+                "name",
+                "conclusion",
+                "steps"
+              ]
+            }
+          }
+        },
+        "required": [
+          "jobs"
+        ]
+      }
+    },
+    "jobLog": {
+      "input": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "title": "owner/name",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$"
+          },
+          "jobId": {
+            "title": "job id",
+            "type": "string",
+            "pattern": "^[1-9]\\d{0,15}$"
+          }
+        },
+        "required": [
+          "repo",
+          "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expired": {
+            "title": "the log is past retention or gone (410/404)",
+            "type": "boolean"
+          },
+          "truncated": {
+            "title": "the server returned fewer lines than the log has",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "lines",
+          "bytes",
+          "expired",
+          "truncated"
+        ]
+      }
+    },
+    "runCommits": {
+      "input": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "title": "owner/name",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$"
+          },
+          "commit": {
+            "title": "full commit SHA",
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          }
+        },
+        "required": [
+          "repo",
+          "commit"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "commit": {
+            "type": "string"
+          },
+          "authorLogin": {
+            "title": "GitHub login; null when the commit has no GitHub account",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "commit",
+          "authorLogin"
+        ]
+      }
+    }
+  },
+  "fault": {
+    "githubService": {
+      "listRuns": {
+        "fault": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "title": "specific error reason",
+              "type": "string"
+            },
+            "info": {
+              "title": "detailed error info",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "failedJobs": {
+        "fault": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "title": "specific error reason",
+              "type": "string"
+            },
+            "info": {
+              "title": "detailed error info",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "jobLog": {
+        "fault": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "title": "specific error reason",
+              "type": "string"
+            },
+            "info": {
+              "title": "detailed error info",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "runCommits": {
+        "fault": {
+          "type": "object",
+          "properties": {
+            "reason": {
+              "title": "specific error reason",
+              "type": "string"
+            },
+            "info": {
+              "title": "detailed error info",
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
