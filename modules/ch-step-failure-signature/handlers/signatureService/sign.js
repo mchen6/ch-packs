@@ -11,5 +11,5 @@ module.exports = async (input) => {
   if (!(step === null || typeof step === 'string') || !Array.isArray(lines) || !lines.every(isLine)) {
     throw new DeviceError('ARGUMENTS_INVALID', 'expected ch-step-error-patterns output: {failingStep: string|null, lines: [{text, kind}]}');
   }
-  return {output: {signature: signatureOf(step, lines), normalised: signedLines(lines), step}};
+  return {output: {signature: signatureOf(step, lines), normalised: signedLines(lines, step), step}};
 };
