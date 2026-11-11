@@ -13,8 +13,9 @@
 // A match is replaced whole by its tag, so no prefix or length leaks.
 //
 // Every pattern is linear on hostile input: lengths are bounded where a
-// pattern could otherwise scan to the end of the line from many starts, and a
-// private key block is found with a single forward scan, never [\s\S]*?.
+// pattern could otherwise scan to the end of the line from many starts, a JWT
+// is found with a single forward scan, and so is a private key block (PGP's
+// "PRIVATE KEY BLOCK" included), never [\s\S]*?.
 
 const TYPES = ['bearerToken', 'githubToken', 'awsKey', 'privateKey', 'jwt', 'basicAuthUrl', 'email', 'ipv4', 'card', 'phone'];
 
@@ -24,9 +25,12 @@ const EMAIL = '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}';
 // beginning of a run of local-part characters (linear on a long run with no
 // @); a sticky copy without the lookbehind takes a match starting exactly
 // where the previous one ended (a@b.com_c@d.org).
+const EMAIL_SEARCH = new RegExp(`(?<![A-Za-z0-9._%+-])${EMAIL}`, 'g');
+const EMAIL_RESUME = new RegExp(EMAIL, 'y');
+
 function maskEmails(line, tag) {
-  const search = new RegExp(`(?<![A-Za-z0-9._%+-])${EMAIL}`, 'g');
-  const resume = new RegExp(EMAIL, 'y');
+  const search = EMAIL_SEARCH;
+  const resume = EMAIL_RESUME;
   let out = '';
   let n = 0;
   let pos = 0;
@@ -45,21 +49,56 @@ function maskEmails(line, tag) {
   return {text: out + line.slice(pos), n};
 }
 
+// A JWT, eyJ<10+>.<10+>.<10+> over [A-Za-z0-9_-], found in one linear pass:
+// the end of every run of segment characters is computed once, so each "eyJ"
+// start is checked in constant time (a regex rescans the run from every start).
+const SEGMENT = /[A-Za-z0-9_-]/;
+const WORD = /[A-Za-z0-9_]/;
+function maskJwts(line, tag) {
+  if (!line.includes('eyJ')) return {text: line, n: 0};
+  const runEnd = new Int32Array(line.length + 1);
+  runEnd[line.length] = line.length;
+  for (let i = line.length - 1; i >= 0; i--) runEnd[i] = SEGMENT.test(line[i]) ? runEnd[i + 1] : i;
+  const segment = (from) => (from < line.length ? runEnd[from] : from);
+  let out = '';
+  let n = 0;
+  let pos = 0;
+  for (let p = line.indexOf('eyJ'); p !== -1; p = line.indexOf('eyJ', p + 1)) {
+    if (p < pos || (p > 0 && WORD.test(line[p - 1]))) continue;
+    // The regex's segments are greedy, so each ends where its run ends.
+    const e1 = segment(p);
+    if (e1 - p < 13 || line[e1] !== '.') continue;
+    const e2 = segment(e1 + 1);
+    if (e2 - e1 - 1 < 10 || line[e2] !== '.') continue;
+    const e3 = segment(e2 + 1);
+    if (e3 - e2 - 1 < 10) continue;
+    out += line.slice(pos, p) + tag;
+    pos = e3;
+    n++;
+  }
+  return {text: out + line.slice(pos), n};
+}
+
 // Applied in this order, to every line, after private key blocks are gone.
+// A URL's credentials before a token type, so a token used as a URL password
+// is masked (and counted) once.
 const PATTERNS = [
-  {type: 'jwt', tag: '<jwt>', re: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g},
-  {type: 'githubToken', tag: '<githubToken>', re: /\b(?:gh[oprsu]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})/g},
+  {type: 'jwt', tag: '<jwt>', mask: maskJwts},
+  {type: 'basicAuthUrl', tag: '://<basicAuth>@', re: /:\/\/(?:[^/:@\s]{1,1024}(?::[^/@\s]{0,1024})?|:[^/@\s]{1,1024})@/g},
+  {type: 'githubToken', tag: '<githubToken>', re: /(?<![A-Za-z0-9])(?:gh[oprsu]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})/g},
   {type: 'awsKey', tag: '<awsKey>', re: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g},
+  {type: 'awsKey', tag: '$1$2<awsKey>', re: /\b(aws_secret_access_key)(\s*[=:]\s*)["']?[A-Za-z0-9/+]{40}["']?/gi},
   {type: 'bearerToken', tag: '<token>', re: /\bbearer\s+[A-Za-z0-9._~+/-]{16,}=*/gi},
-  {type: 'basicAuthUrl', tag: '://<basicAuth>@', re: /:\/\/[^/:@\s]{1,256}:[^@\s]{1,256}@/g},
+  {type: 'bearerToken', tag: '<token>', re: /\bbasic\s+[A-Za-z0-9+/]{16,}={0,2}/gi},
+  {type: 'bearerToken', tag: '$1<token>', re: /(authorization:\s*)token\s+[A-Za-z0-9_-]{16,}/gi},
   {type: 'email', tag: '<email>', mask: maskEmails},
   {type: 'card', tag: '<card>', re: /\b(?:\d[ -]?){12,18}\d\b/g},
   {type: 'ipv4', tag: '<ipv4>', re: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g},
   {type: 'phone', tag: '<phone>', re: /(?:\+\d{1,3}[-. ]?)?(?:\(\d{3}\)|\d{3})[-. ]\d{3}[-. ]\d{4}\b/g}
 ];
 
-const KEY_BEGIN = /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY-----/g;
-const KEY_END = /-----END [A-Z0-9 ]{0,40}PRIVATE KEY-----/g;
+const KEY_BEGIN = /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/g;
+const KEY_END = /-----END [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/g;
 const KEY_TAG = '<privateKey>';
 
 // Private key blocks, within a line or across lines, each replaced by one tag;
@@ -112,7 +151,10 @@ function redactLines(lines) {
         out = r.text;
         counts[p.type] += r.n;
       } else {
-        out = out.replace(p.re, () => { counts[p.type]++; return p.tag; });
+        out = out.replace(p.re, (...m) => {
+          counts[p.type]++;
+          return p.tag.replace(/\$(\d)/g, (_, i) => m[Number(i)]);
+        });
       }
     }
     return out;

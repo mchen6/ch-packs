@@ -116,3 +116,44 @@ test('the module is a part: never listed', () => {
   const pkg = require(path.join(__dirname, '..', 'package.json'));
   assert.deepStrictEqual(pkg.countinghouse, {role: 'part'});
 });
+
+// From /code-review medium on PR #3.
+test('many jwt-like starts on one line stay linear', () => {
+  const start = Date.now();
+  redactLines(['-eyJ'.repeat(20000), ('eyJ' + 'a'.repeat(12) + '-').repeat(10000)]);
+  const ms = Date.now() - start;
+  assert.ok(ms < 2000, `took ${ms} ms`);
+});
+
+test('a PGP private key block is replaced whole', () => {
+  const r = redactLines(['-----BEGIN PGP ' + 'PRIVATE KEY BLOCK-----', '', KEY_BODY, '-----END PGP ' + 'PRIVATE KEY BLOCK-----', 'after']);
+  assert.deepStrictEqual(r.lines, ['<privateKey>', 'after']);
+  assert.strictEqual(r.counts.privateKey, 1);
+});
+
+test('URL credentials: long, password-only or user-only are masked; a port and a later @ are not credentials', () => {
+  const long = 'p'.repeat(300);
+  assert.deepStrictEqual(redactLines([`https://u:${long}@host/x`]).lines, ['https://<basicAuth>@host/x']);
+  assert.deepStrictEqual(redactLines(['https://:hunter2hunter2@host/x']).lines, ['https://<basicAuth>@host/x']);
+  assert.deepStrictEqual(redactLines(['git clone https://' + 'T'.repeat(30) + '@github.com/o/r']).lines, ['git clone https://<basicAuth>@github.com/o/r']);
+  const r = redactLines(['see https://example.com:443/u/alice@example.com']);
+  assert.deepStrictEqual(r.lines, ['see https://example.com:443/u/<email>']);
+  assert.strictEqual(r.counts.basicAuthUrl, 0);
+});
+
+test('a token used as a URL password is counted once', () => {
+  const r = redactLines([`https://x-access-token:${GHP}@github.com/o/r`]);
+  assert.deepStrictEqual(r.lines, ['https://<basicAuth>@github.com/o/r']);
+  assert.strictEqual(r.counts.basicAuthUrl + r.counts.githubToken, 1);
+});
+
+test('Basic and token authorization headers, AWS secret keys, and a GitHub token after a name are masked', () => {
+  const r = redactLines([
+    'Authorization: Basic ' + 'dXNlcjpw'.repeat(3) + '==',
+    'Authorization: token ' + 'f'.repeat(40),
+    'aws_secret_access_key = ' + 'w'.repeat(40),
+    'AWS_SECRET_ACCESS_KEY=' + 'W'.repeat(40),
+    'GH_TOKEN_' + GHP
+  ]);
+  assert.deepStrictEqual(r.lines, ['Authorization: <token>', 'Authorization: <token>', 'aws_secret_access_key = <awsKey>', 'AWS_SECRET_ACCESS_KEY=<awsKey>', 'GH_TOKEN_<githubToken>']);
+});

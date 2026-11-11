@@ -14,8 +14,10 @@ const workspaces = ['modules', 'packages'].flatMap((top) =>
     .filter((e) => e.isDirectory() && fs.existsSync(path.join(ROOT, top, e.name, 'package.json')))
     .map((e) => ({top, dir: e.name, pkg: JSON.parse(fs.readFileSync(path.join(ROOT, top, e.name, 'package.json'), 'utf8'))})));
 
-test('the scope is one constant', () => {
-  assert.strictEqual(SCOPE, '@SCOPE');
+test('the scope is one constant, an npm scope (@SCOPE until Matt names it)', () => {
+  assert.match(SCOPE, /^@[A-Za-z0-9][A-Za-z0-9-]*$/);
+  // The rename is one search-and-replace of the scope, constant included.
+  assert.strictEqual(fs.readFileSync(path.join(ROOT, 'scripts', 'lib', 'scope.js'), 'utf8').includes(`SCOPE: '${SCOPE}'`), true);
 });
 
 test('every workspace is named <SCOPE>/<its directory>, with the ch- prefix', () => {
