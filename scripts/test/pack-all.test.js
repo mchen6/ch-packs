@@ -57,3 +57,24 @@ test('pack-all prints [] when there is no workspace yet', () => {
     fs.rmSync(root, {recursive: true, force: true});
   }
 });
+
+test('a workspace script printing to stdout does not break the JSON', () => {
+  const root = fixtureRoot([['packages/ch-b', 'ch-b', '0.1.0']]);
+  try {
+    const pkgFile = path.join(root, 'packages', 'ch-b', 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgFile, 'utf8'));
+    pkg.scripts = {prepack: 'node -e "console.log(\'[noise] from prepack\')"'};
+    fs.writeFileSync(pkgFile, JSON.stringify(pkg));
+    const r = run(root);
+    assert.strictEqual(r.status, 0, r.stderr);
+    assert.deepStrictEqual(JSON.parse(r.stdout).map((e) => e.name), ['ch-b']);
+  } finally {
+    fs.rmSync(root, {recursive: true, force: true});
+  }
+});
+
+test('an option without its value is refused', () => {
+  const r = spawnSync(process.execPath, [SCRIPT, '--out'], {encoding: 'utf8'});
+  assert.strictEqual(r.status, 1);
+  assert.strictEqual(r.stderr, 'pack-all: --out needs a value\n');
+});
