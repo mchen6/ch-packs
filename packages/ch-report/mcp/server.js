@@ -28,13 +28,21 @@ const TOOL = {
   }
 };
 
+const USAGE = 'usage: ch-report-mcp [--home <dir>]\n';
+
+// -> the home directory, or throws on a --home with no value or another option.
 function homeArg(argv) {
-  const i = argv.indexOf('--home');
-  return i !== -1 && argv[i + 1] ? argv[i + 1] : home();
+  if (argv.length === 0) return home();
+  if (argv[0] !== '--home' || argv.length > 2) throw new Error(`unknown option ${argv.find((a) => a !== '--home') || argv[0]}`);
+  if (argv[1] === undefined || argv[1].startsWith('--')) throw new Error('--home needs a value');
+  return argv[1];
 }
 
 // One JSON-RPC message -> its response, or null for a notification.
 function handle(msg, dir) {
+  if (msg === null || typeof msg !== 'object' || Array.isArray(msg)) {
+    return {jsonrpc: '2.0', id: null, error: {code: -32600, message: 'invalid request: one JSON-RPC request object per line'}};
+  }
   const id = msg.id;
   if (id === undefined || id === null) return null;
   const ok = (result) => ({jsonrpc: '2.0', id, result});
@@ -76,6 +84,15 @@ function serve(input, output, dir) {
   });
 }
 
-if (require.main === module) serve(process.stdin, process.stdout, homeArg(process.argv.slice(2)));
+if (require.main === module) {
+  let dir;
+  try {
+    dir = homeArg(process.argv.slice(2));
+  } catch (err) {
+    process.stderr.write(`ch-report-mcp: ${err.message}\n${USAGE}`);
+    process.exit(1);
+  }
+  serve(process.stdin, process.stdout, dir);
+}
 
 module.exports = {handle, TOOL};

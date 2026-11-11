@@ -12,23 +12,31 @@ function size(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+const sizes = (x) => `${n(x.linesIn)} lines (${size(x.bytesIn)}) in, ${n(x.linesOut)} lines (${size(x.bytesOut)}) out, ~${n(x.tokensInEst)} and ~${n(x.tokensOutEst)} tokens (estimate, bytes/4)`;
+
 function formatText(agg) {
   const t = agg.totals;
   if (t.calls + t.serverCalls === 0) return 'no usage recorded\n';
+  const packCalls = agg.replaced.reduce((sum, r) => sum + r.packCalls, 0);
+  const stoodFor = agg.replaced.reduce((sum, r) => sum + r.serverCalls, 0);
   const lines = [
-    `${n(t.calls)} tool calls stood for ${n(t.serverCalls)} server calls, from ${agg.processes.length} launcher process(es).`,
+    `${n(packCalls)} pack calls stood for ${n(stoodFor)} server calls; ${n(t.calls)} tool calls in all, from ${agg.processes.length} launcher process(es).`,
     `read ${n(t.linesIn)} lines (${size(t.bytesIn)}) from servers; ${n(t.linesOut)} lines (${size(t.bytesOut)}) returned to the model.`,
     `tokens, estimate (bytes/4): about ${n(t.tokensInEst)} read, ${n(t.tokensOutEst)} returned.`,
-    '',
-    'by tool: calls, server calls, lines in, bytes in, lines out, bytes out, tokens in and out (estimate, bytes/4)'
+    '', 'by pack:'
   ];
-  for (const x of agg.byTool) {
-    lines.push(`  ${x.pack} ${x.tool}: ${n(x.calls)}, ${n(x.serverCalls)}, ${n(x.linesIn)}, ${size(x.bytesIn)}, ${n(x.linesOut)}, ${size(x.bytesOut)}, ~${n(x.tokensInEst)}, ~${n(x.tokensOutEst)}`);
-  }
+  for (const x of agg.byPack) lines.push(`  ${x.pack}: ${n(x.calls)} calls, ${n(x.serverCalls)} server calls; ${sizes(x)}`);
+  lines.push('', 'by tool:');
+  for (const x of agg.byTool) lines.push(`  ${x.pack} ${x.tool}: ${n(x.calls)} calls stood for ${n(x.serverCalls)} server calls; ${sizes(x)}`);
   if (agg.byServer.length) {
-    lines.push('', 'by server: calls, lines in, bytes in, credential used (by name)');
-    for (const s of agg.byServer) lines.push(`  ${s.server}: ${n(s.serverCalls)}, ${n(s.linesIn)}, ${size(s.bytesIn)}, ${s.credentials.join(', ') || 'none'}`);
+    lines.push('', 'by server:');
+    for (const s of agg.byServer) {
+      const tools = Object.entries(s.tools).sort().map(([k, v]) => `${k} ${n(v)}`).join(', ');
+      lines.push(`  ${s.server}: ${n(s.serverCalls)} calls (${tools}), ${n(s.linesIn)} lines (${size(s.bytesIn)}); credential used: ${s.credentials.join(', ') || 'none'} (by name)`);
+    }
   }
+  lines.push('', 'by process:');
+  for (const p of agg.processes) lines.push(`  pid ${p.pid}, started ${p.started}: ${n(p.calls)} calls, ${n(p.serverCalls)} server calls, ${p.first} to ${p.last}`);
   return lines.join('\n') + '\n';
 }
 
