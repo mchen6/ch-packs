@@ -20,7 +20,7 @@
               "properties": {
                 "runId": {
                   "type": "string",
-                  "minLength": 1
+                  "pattern": "^\\d+$"
                 },
                 "conclusion": {
                   "type": "string",
@@ -31,14 +31,16 @@
                   ]
                 },
                 "commit": {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{7,40}$"
                 },
                 "branch": {
                   "type": "string"
                 },
                 "createdAt": {
                   "title": "ISO 8601",
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d+)?(?:Z|[+-]\\d\\d:\\d\\d)$"
                 },
                 "signature": {
                   "type": "string",
