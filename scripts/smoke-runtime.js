@@ -8,15 +8,15 @@
 // own, checks the answer and stops the server. Proves on each operating system
 // that the pinned runtime installs, starts and serves a sandboxed module.
 //
+// No Redis is needed: with --mcpToolCallCost at its default of 0 nothing is
+// metered, and the runtime serves the call with its Redis client unconnected
+// (seen on a macOS runner with no Redis, 2026-11-11), as local mode will.
+//
 // Environment:
-//   SMOKE_REDIS_URL        --redisUrl for the runtime (CI's Redis service). Unset:
-//                          the runtime's own default.
-//   SMOKE_EXPECT_NO_REDIS  "1" on runners with no Redis (macOS, Windows) until
-//                          LM1's in-process metering lands: the server must start
-//                          and list the tool, and the call is expected to fail.
-//                          A call that succeeds there fails the smoke test, so the
-//                          marker is removed in the PR that bumps the runtime.
-//   SMOKE_PORT             the port; default the first free one in 9700-9719.
+//   SMOKE_REDIS_URL  --redisUrl for the runtime; unset, the runtime's default
+//                    (127.0.0.1:6379). On a machine whose Redis belongs to
+//                    something else, point it at an unused port.
+//   SMOKE_PORT       the port; default the first free one in 9700-9719.
 //
 // Nothing secret is printed: the key is random, lives in a temporary auth.json
 // and is never written to stdout or stderr; the server's own output is kept and
@@ -62,7 +62,6 @@ async function rpc(port, key, method, params) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
-  const expectNoRedis = process.env.SMOKE_EXPECT_NO_REDIS === '1';
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ch-smoke-'));
   const key = 'smoke-' + crypto.randomBytes(16).toString('hex');
   fs.writeFileSync(path.join(dir, 'auth.json'), JSON.stringify({[key]: {userName: 'smoke', devices: ['*']}}, null, 2));
@@ -81,7 +80,7 @@ async function main() {
 
   const say = (line) => process.stdout.write(`smoke: ${line}\n`);
   try {
-    say(`countinghouse ${require(path.join(path.dirname(FRAMEWORK), 'package.json')).version} on Node ${process.version} (${process.platform}-${process.arch}), port ${port}${expectNoRedis ? ', no Redis expected' : ''}`);
+    say(`countinghouse ${require(path.join(path.dirname(FRAMEWORK), 'package.json')).version} on Node ${process.version} (${process.platform}-${process.arch}), port ${port}`);
 
     // 1. Started, the module loaded, its tool listed.
     const deadline = Date.now() + START_TIMEOUT_MS;
@@ -101,13 +100,8 @@ async function main() {
     const called = await rpc(port, key, 'tools/call', {name: tool.name, arguments: {}});
     const answer = called.result && !called.result.isError ? called.result.structuredContent : null;
     const ok = answer != null && answer.text === 'hello';
-    if (expectNoRedis) {
-      if (ok) throw new Error('the call succeeded on a runner marked SMOKE_EXPECT_NO_REDIS: remove the marker from ci.yml');
-      say('the call failed as expected with no Redis (until LM1)');
-    } else {
-      if (!ok) throw new Error(`unexpected answer: ${JSON.stringify(called)}`);
-      say('the call answered {text: "hello"}');
-    }
+    if (!ok) throw new Error(`unexpected answer: ${JSON.stringify(called)}`);
+    say('the call answered {text: "hello"}');
     say('pass');
     return 0;
   } catch (err) {
