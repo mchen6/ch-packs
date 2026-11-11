@@ -146,9 +146,11 @@ need as ordinary features, each a reviewed PR on its own branch:
 | UL1 usage ledger (hash-chained, exportable) | "what the packs' calls replaced", durable across sessions | B | after LM1 |
 
 The pack family is a separate repository, private until Matt says
-otherwise: this repository, `ch-packs`. Every npm package name starts with
-`ch-` (Matt, 2026-11-11), unscoped; reserving them on npm is publishing and
-is Matt's call. Names: `ch-local` (the launcher), `ch-access-<server>`,
+otherwise: this repository, `ch-packs`. Packages live under an npm scope
+Matt owns (Matt, 2026-11-11 10:38; name not chosen yet, written `@SCOPE`),
+and keep the `ch-` prefix inside it (tech's call) so names stay
+recognisable; creating the organisation and publishing are Matt's, on his
+timing. Names: `ch-local` (the launcher), `ch-access-<server>`,
 `ch-step-<name>`, `ch-pack-<scenario>`, `ch-report` (the report tool),
 `ch-trace-report` (the analysis tool, from its own repository). It contains:
 Unscoped names cannot be protected as a family: anyone can publish a
@@ -568,8 +570,8 @@ credential and has the stable surface the steps need. The refresh-token
 grant stays for Gmail (pack 8). Trade-off stated in each access module's
 README: a REST surface is ours to maintain; an MCP surface is the vendor's.
 
-Order: 1, 2, 4 (MCP remotes), then 3, 5, 6, 7 (HTTP remotes), then 8
-(needs Matt: the swap of 3 and 4, which the business side also advises).
+Order (Matt, 10:38): 1, 2, 4 (MCP remotes), then 3, 5, 6, 7 (HTTP
+remotes), then 8.
 Credentials are environment variables named by the access module; the
 launcher prints which are missing and which name it used; the main thread
 holds them; no module sees one. For GitHub the launcher reads
@@ -688,20 +690,15 @@ the shim, the floor question returns to Matt.
    a blocker.
 4. On the phone: add a custom connector to a tunnelled endpoint with an
    `X-CH-Key` request header, and say whether the field exists.
-5. The pack order swap (4 before 3), yes or no. The business side advises
-   yes.
-6. Upgrade policy: "easy, opt-in automatic" (this design, and the
-   business side's advice) or automatic by default (his 09:48 wording).
-8. npm: whether to use an owned scope instead of the bare `ch-` prefix
-   (business side's note); The `countinghouse` package on npm (6.1.0) is his
+5. ~~Pack order swap~~: decided 10:38, 1, 2, 4, 3, 5, 6, 7, 8.
+6. ~~Upgrade policy~~: decided 10:38, "easy, opt-in automatic" as section 2
+   implements it.
+8. ~~npm scope~~: decided 10:38, an owned scope, name not chosen; Matt
+   creates the organisation and publishes on his timing. The `countinghouse` package on npm (6.1.0) is his
    account (maintainer `out4b <seeds.c@gmail.com>`, checked 2026-11-11),
    so that name is safe; a 7.x release with RC1 and LM1 must be published
    before `ch-local install` can work from npm, on his timing.
-7. Token figures in the report: none in layer 1 (this design) or an
-   approximate token column in the report only, never the receipt,
-   labelled as an estimate with its method beside the exact bytes and
-   lines (the business side's suggestion). Tech's recommendation: accept
-   the labelled column, because "token usage" was his ask and for Cursor
-   and Claude Desktop users bytes alone will never read as token usage;
-   the method would be one named tokenizer applied to the returned text,
-   with the receipt unchanged.
+7. ~~Token figures~~: decided 10:37, an approximate token column in the
+   report only (command line, export, callable tool), labelled as an
+   estimate naming its method (UTF-8 bytes / 4 in v1), beside the exact
+   bytes and lines; the receipt stays bytes and lines.
