@@ -306,10 +306,15 @@ is fine).
 | Claude Desktop | stdio via `.mcpb` | double-click the bundle; `manifest.json` (manifest_version 0.3, server.type node, dependencies bundled); user config fields for credentials | the bundle's user_config, stored by Desktop | bundle built on Linux, its server run on GitHub's macOS and Windows runners; the Desktop install itself untested until a Mac or Windows machine exists |
 | ChatGPT | remote HTTPS only | custom connector; OAuth or no auth, no custom headers | OAuth front (section 7) | after the phone route |
 
-Three details are unverified and get a quick test in the client when the
-snippets are written: whether Cursor accepts `type` on remote entries,
-whether VS Code's portable format defaults `type`, and whether Codex
-accepts `--url` without OAuth flags.
+Three details, settled 2026-11-11 from the public sources (C, read-only):
+Codex `codex mcp add --url` works without OAuth flags, but probes the URL
+for OAuth discovery and starts a browser login if the server advertises
+it, so once the OAuth front lands the Codex page prefers the TOML entry
+(`url` + `bearer_token_env_var`) or stdio; VS Code's portable reader
+(`nativeMcpDiscoveryAdapters.ts`) ignores `type` entirely: an entry with
+`url` is HTTP, anything else stdio, so writing `type` is harmless; Cursor is
+closed source and its docs show remote entries without `type`, so the Cursor
+snippet omits it.
 
 The stdio launcher is the primary form for every local client; HTTP is for
 a runtime the user keeps running (and for the phone).
