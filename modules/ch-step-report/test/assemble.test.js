@@ -28,11 +28,19 @@ test('the summary for each verdict and edge', () => {
     const f = fixture();
     return summaryOf({...f.run, ...patch.run}, patch.history === null ? null : {...f.history, ...patch.history});
   };
-  assert.strictEqual(s({history: {verdict: 'new', count: 1}}), "Step 'Run npm test' failed with a new signature, seen only in this run of the last 50.");
+  assert.strictEqual(s({history: {verdict: 'new', count: 1}}), "Step 'Run npm test' failed with a new signature, seen only in this run of the last 50 runs.");
   assert.strictEqual(s({history: {verdict: 'flaky', count: 3}}), "Step 'Run npm test' failed with a flaky signature seen 3 times in the last 50 runs, first at a1b2c3d.");
   assert.strictEqual(s({history: {verdict: 'recurring', count: 1}}), "Step 'Run npm test' failed with a recurring signature seen once in the last 50 runs, at a1b2c3d.");
   assert.strictEqual(s({run: {step: null}}), 'The job failed with a recurring signature seen 4 times in the last 50 runs, first at a1b2c3d.');
-  assert.strictEqual(s({history: null}), "Step 'Run npm test' failed; its log could not be read, so it has no failure history.");
+  assert.strictEqual(s({history: null}), "Step 'Run npm test' failed; it has no failure history: its log was not read (expired, unavailable or over the log cap).");
+  assert.strictEqual(s({run: {step: 'Run a\n  b'}}), "Step 'Run a b' failed with a recurring signature seen 4 times in the last 50 runs, first at a1b2c3d.");
+});
+
+// From /code-review medium on PR #8.
+test('the summary counts the runs that were in the window, not the window asked for', () => {
+  const f = fixture();
+  f.coverage.runsListed = 12;
+  assert.strictEqual(assembleReport(f).summary, "Step 'Run npm test' failed with a recurring signature seen 4 times in the last 12 runs, first at a1b2c3d.");
 });
 
 test('assemble keeps field order', () => {
@@ -54,7 +62,10 @@ test('handler validates its input', async () => {
   const invalid = (err) => err.code === 'ARGUMENTS_INVALID';
   const f = fixture();
   for (const bad of [{}, null, {...f, run: null}, {...f, run: {...f.run, step: 7}}, {...f, errors: [1]}, {...f, history: {...f.history, verdict: 'odd'}},
-    {...f, history: {...f.history, count: 0}}, {...f, coverage: null}, {...f, extra: 1}]) {
+    {...f, history: {...f.history, count: 0}}, {...f, coverage: null}, {...f, extra: 1},
+    {...f, history: {...f.history, count: 3}}, {...f, history: {...f.history, verdict: 'new'}},
+    {...f, ownerHint: {logins: ['octo@example.com'], why: ['x']}}, {...f, ownerHint: {logins: ['a', 'b'], why: ['a: x']}},
+    {...f, ownerHint: {logins: ['a', 'b', 'c', 'd'], why: ['1', '2', '3', '4']}}]) {
     await assert.rejects(assemble(bad), invalid, JSON.stringify(bad).slice(0, 80));
   }
   const {output} = await assemble(f);

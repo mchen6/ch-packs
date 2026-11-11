@@ -51,3 +51,14 @@ test('handler refuses what is not a GitHub login', async () => {
 test('the module is a part: never listed', () => {
   assert.deepStrictEqual(require('../package.json').countinghouse, {role: 'part'});
 });
+
+// From /code-review medium on PR #8.
+test('logins are compared without case: one person is listed once', () => {
+  const out = ownerHint({firstSeen: {commit: FIRST, authorLogin: 'Octocat'}, stepCommits: [{commit: C2, authorLogin: 'octocat'}, {commit: C3, authorLogin: 'hubot'}]});
+  assert.deepStrictEqual(out.logins, ['Octocat', 'hubot']);
+});
+
+test('legacy logins with a trailing or doubled hyphen are accepted', async () => {
+  const {output} = await hint({firstSeen: {commit: FIRST, authorLogin: 'foo-'}, stepCommits: [{commit: C2, authorLogin: 'a--b'}]});
+  assert.deepStrictEqual(output.logins, ['foo-', 'a--b']);
+});
