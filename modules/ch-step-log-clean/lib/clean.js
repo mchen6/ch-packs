@@ -3,27 +3,43 @@
 //
 // A job log's layout (checked against a real one, 2026-11-11): a UTF-8 BOM; an
 // ISO timestamp on every line; each step opened by a `##[group]Run <command>`
-// header group that holds only the command and its shell/env lines, the
-// step's output following the header's `##[endgroup]`; other groups (checkout's
-// "Fetching the repository", say) nested inside a step's output; post steps
+// header group that holds only the command (echoed in cyan) or a uses: step's
+// with:/env: block, the step's output following the header's `##[endgroup]`;
+// other groups (checkout's "Fetching the repository", or one a script opens
+// with ::group::, whatever its name) nested inside a step's output; post steps
 // opened by a plain "Post job cleanup." line; the set-up lines before the first
-// step. So a step runs from its header to the next header, a group that is not
-// a header is only markers to drop, and what comes before the first header is
-// the step "(top)".
+// step. So a step runs from its header to the next header; a header's own
+// lines are dropped (the step's name already carries the command, and an
+// echoed "|| echo error" is not an error); a group that is not a header is
+// only markers to drop; what comes before the first header is "(top)".
 
-const BOM = /^﻿/;
+const BOM = /^\uFEFF/;
 const TIMESTAMP = /^\d{4}-\d\d-\d\dT[\d:.]+Z(?: |$)/;
-const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
+// CSI (colours, erase), OSC (hyperlinks, titles; BEL or ST ended), character
+// set selects, and the other two-byte escapes.
+const ANSI = /\x1b(?:\[[0-9;?]*[ -\/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()*+][0-9A-Za-z]|[\x40-\x5f])/g;
+const CYAN = '\x1b[36;1m';
 const GROUP = /^##\[group\](.*)$/;
 const ENDGROUP = /^##\[endgroup\]/;
 const STEP_HEADER = /^Run /;
+const USES_BLOCK = /^(?:with|env):\s*$/;
 const POST_STEP = /^Post job cleanup\.?$/;
-const PROGRESS = [/^\s*[\d.]+%/, /^\s*[|/\\-]\s*$/, /Receiving objects:/, /Resolving deltas:/];
+const MARKED = /^##\[(?:error|warning)\]/;
+// Progress: a bare percentage, and git's transfer counters.
+const PROGRESS = [/^\s*\d{1,3}(?:\.\d+)?%\s*$/, /^\s*(?:remote:\s+)?(?:Enumerating|Counting|Compressing|Receiving) objects:|^\s*(?:remote:\s+)?Resolving deltas:/];
 const TOP = '(top)';
+
+// What a terminal would show of one raw line: carriage returns at its end are
+// the line ending's, one inside it is a progress bar redrawing itself.
+function shown(rawLine) {
+  const line = rawLine.replace(/\r+$/, '');
+  return line.includes('\r') ? line.slice(line.lastIndexOf('\r') + 1) : line;
+}
 
 // -> {steps: [{name, lines}], totalLines, kept}: totalLines counts the input's
 // lines (a final newline ends the last one, it does not start another), kept
-// the lines in steps. Dropped: group markers, progress lines, blank lines.
+// the lines in steps. Dropped: header lines, group markers, progress lines,
+// blank lines.
 function cleanLog(text) {
   const raw = text.replace(BOM, '').split(/\r?\n/);
   if (raw[raw.length - 1] === '') raw.pop();
@@ -33,26 +49,33 @@ function cleanLog(text) {
     if (current.name !== TOP || current.lines.length > 0) steps.push(current);
     current = {name, lines: []};
   };
+  let inHeader = false;
   let kept = 0;
-  for (const rawLine of raw) {
-    // A carriage return inside a line is a progress bar redrawing itself:
-    // keep what a terminal would show last.
-    const shown = rawLine.includes('\r') ? rawLine.slice(rawLine.lastIndexOf('\r') + 1) : rawLine;
-    const line = shown.replace(TIMESTAMP, '').replace(ANSI, '').trimEnd();
+  const visible = raw.map((r) => shown(r).replace(TIMESTAMP, ''));
+  visible.forEach((withAnsi, i) => {
+    const line = withAnsi.replace(ANSI, '').trimEnd();
+    if (inHeader) {
+      if (ENDGROUP.test(line)) inHeader = false;
+      return;
+    }
     const group = GROUP.exec(line);
     if (group) {
-      if (STEP_HEADER.test(group[1])) open(group[1].trim());
-      continue;
+      const next = i + 1 < visible.length ? visible[i + 1] : '';
+      if (STEP_HEADER.test(group[1]) && (next.startsWith(CYAN) || USES_BLOCK.test(next.replace(ANSI, '')))) {
+        open(group[1].trim());
+        inHeader = true;
+      }
+      return;
     }
-    if (ENDGROUP.test(line)) continue;
+    if (ENDGROUP.test(line)) return;
     if (POST_STEP.test(line)) {
       open('Post job cleanup');
-      continue;
+      return;
     }
-    if (line.trim() === '' || PROGRESS.some((re) => re.test(line))) continue;
+    if (line.trim() === '' || (!MARKED.test(line) && PROGRESS.some((re) => re.test(line)))) return;
     current.lines.push(line);
     kept++;
-  }
+  });
   if (current.name !== TOP || current.lines.length > 0) steps.push(current);
   return {steps, totalLines: raw.length, kept};
 }

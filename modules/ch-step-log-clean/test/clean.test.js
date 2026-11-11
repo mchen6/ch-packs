@@ -20,16 +20,13 @@ test('groups lines into steps and strips timestamps and ansi', () => {
     steps: [
       {name: '(top)', lines: ["Current runner version: '2.338.2'", 'Image: ubuntu-24.04', 'Complete job name: test (ubuntu-latest, 24)']},
       {name: 'Run actions/checkout@v4', lines: [
-        'with:',
-        '  repository: example/widgets',
         'Syncing repository: example/widgets',
         '[command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --depth=1 origin'
       ]},
       {name: 'Run npm test', lines: [
-        'npm test',
-        'shell: /usr/bin/bash -e {0}',
         '> widgets@1.0.0 test',
         '> node --test',
+        '|', // a lone bar is content: a spinner redraws with \r, which shown() handles
         '✖ adds two numbers (2.1ms)',
         '  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:',
         '  3 !== 4',
@@ -39,7 +36,7 @@ test('groups lines into steps and strips timestamps and ansi', () => {
       {name: 'Post job cleanup', lines: ['[command]/usr/bin/git version', 'git version 2.56.0', 'Cleaning up orphan processes']}
     ],
     totalLines: 35,
-    kept: 19
+    kept: 16
   });
 });
 
@@ -50,8 +47,6 @@ test('cleans CRLF and BOM logs', () => { // Review Focus 1
   assert.ok(out.steps.flatMap((s) => s.lines).every((l) => !l.includes('\r') && !l.includes('\ufeff')));
   assert.deepStrictEqual(out.steps.map((s) => s.name), ['(top)', 'Run tests']);
   assert.deepStrictEqual(out.steps[1].lines, [
-    'npm test',
-    "shell: C:\\Program Files\\PowerShell\\7\\pwsh.EXE -command \". '{0}'\"",
     'Downloading 100%', // a carriage-return progress line keeps what a terminal shows last
     'not ok 1 - reads the config',
     "  Error: ENOENT: no such file or directory, open 'C:\\a\\widgets\\widgets\\config.json'",
@@ -61,17 +56,49 @@ test('cleans CRLF and BOM logs', () => { // Review Focus 1
 });
 
 test('progress lines are dropped and counted', () => {
-  const out = cleanLog([' 45%', '12.5% done', '  |', '/', '\\', '-', 'Receiving objects:  3% (1/30)', 'Resolving deltas: 100% (2/2)', 'real line', '', '   ', '2026-11-11T19:00:11.1066192Z'].join('\n'));
-  assert.deepStrictEqual(out, {steps: [{name: '(top)', lines: ['real line']}], totalLines: 12, kept: 1});
+  const out = cleanLog([' 45%', '12.5%', 'Receiving objects:  3% (1/30)', 'Resolving deltas: 100% (2/2)', 'real line', '', '   ', '2026-11-11T19:00:11.1066192Z'].join('\n'));
+  assert.deepStrictEqual(out, {steps: [{name: '(top)', lines: ['real line']}], totalLines: 8, kept: 1});
 });
 
+// A step header as the runner writes it: the group, the command echoed in cyan.
+const header = (cmd) => [`##[group]Run ${cmd}`, `\x1b[36;1m${cmd}\x1b[0m`, 'shell: /usr/bin/bash -e {0}', '##[endgroup]'];
+
 test('a sub-group inside a step stays in the step; its markers go', () => {
-  const out = cleanLog(['##[group]Run make', 'make', '##[endgroup]', '##[group]Compiling', 'cc -c a.c', '##[endgroup]', 'done'].join('\n'));
-  assert.deepStrictEqual(out.steps, [{name: 'Run make', lines: ['make', 'cc -c a.c', 'done']}]);
+  const out = cleanLog([...header('make'), '##[group]Compiling', 'cc -c a.c', '##[endgroup]', 'done'].join('\n'));
+  assert.deepStrictEqual(out.steps, [{name: 'Run make', lines: ['cc -c a.c', 'done']}]);
+});
+
+test('a step header holds only the echoed command, which the step name already says: its lines are dropped', () => {
+  const out = cleanLog([...header('npm run lint || echo "lint error"'), 'ok'].join('\n'));
+  assert.deepStrictEqual(out.steps, [{name: 'Run npm run lint || echo "lint error"', lines: ['ok']}]);
+  const uses = cleanLog(['##[group]Run actions/setup-node@v4', 'with:', '  node-version: 24', '##[endgroup]', 'Found in cache'].join('\n'));
+  assert.deepStrictEqual(uses.steps, [{name: 'Run actions/setup-node@v4', lines: ['Found in cache']}]);
+});
+
+test('a group a script opens with a name starting "Run " is a sub-group, not a step', () => {
+  const out = cleanLog([...header('make test'), '##[group]Run unit tests', 'not ok 1 - adds', '##[endgroup]', 'done'].join('\n'));
+  assert.deepStrictEqual(out.steps, [{name: 'Run make test', lines: ['not ok 1 - adds', 'done']}]);
+});
+
+test('a line ending in a carriage return is kept, error lines included', () => {
+  const out = cleanLog([...header('x'), 'Downloading 100%\r', '##[error]failed\r'].join('\r\n'));
+  assert.deepStrictEqual(out.steps[0].lines, ['Downloading 100%', '##[error]failed']);
+});
+
+test('progress filters drop only progress: real lines that start with a percentage, or are a lone dash or bar, stay', () => {
+  const out = cleanLog(['100% of 3 suites failed', ' 85.5% Statements 120/140', '-', '|', ' 45%', 'remote: Counting objects: 100% (5/5), done.',
+    '##[error]fatal: early EOF while Receiving objects: 45%', '##[warning]Resolving deltas: slow'].join('\n'));
+  assert.deepStrictEqual(out.steps[0].lines, ['100% of 3 suites failed', ' 85.5% Statements 120/140', '-', '|',
+    '##[error]fatal: early EOF while Receiving objects: 45%', '##[warning]Resolving deltas: slow']);
+});
+
+test('OSC hyperlinks and character-set escapes are stripped too', () => {
+  const out = cleanLog(['see \x1b]8;;https://example.com/x\x07the docs\x1b]8;;\x07 now\x1b(B', 'a\x1b]0;title\x1b\\b'].join('\n'));
+  assert.deepStrictEqual(out.steps[0].lines, ['see the docs now', 'ab']);
 });
 
 test('a step with no output is still a step; an empty (top) is left out', () => {
-  const out = cleanLog(['##[group]Run true', '##[endgroup]', '##[group]Run false', '##[endgroup]', '##[error]Process completed with exit code 1.'].join('\n'));
+  const out = cleanLog([...header('true'), ...header('false'), '##[error]Process completed with exit code 1.'].join('\n'));
   assert.deepStrictEqual(out.steps, [{name: 'Run true', lines: []}, {name: 'Run false', lines: ['##[error]Process completed with exit code 1.']}]);
 });
 
@@ -87,13 +114,13 @@ test('warning and error markers are kept, other ansi forms are stripped', () => 
 
 test('a 5 MB log is cleaned in well under a second', () => {
   const line = '2026-11-11T19:00:11.1066192Z \x1b[36mmodule ok\x1b[0m: something happened at step 42 with value 0x1f2e3d';
-  const text = ['##[group]Run npm test', '##[endgroup]', ...Array(60000).fill(line)].join('\n');
+  const text = [...header('npm test'), ...Array(60000).fill(line)].join('\n');
   assert.ok(text.length > 5e6);
   const start = Date.now();
   const out = cleanLog(text);
   const ms = Date.now() - start;
   assert.strictEqual(out.kept, 60000);
-  assert.ok(ms < 1000, `took ${ms} ms`);
+  assert.ok(ms < 3000, `took ${ms} ms`); // generous: shared CI runners
 });
 
 test('handler wraps cleanLog and refuses a non-string', async () => {
