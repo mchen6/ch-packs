@@ -4,9 +4,11 @@
 // is not a login, so none can pass through it). A suggestion, never an action.
 
 const MAX_LOGINS = 3;
-// GitHub's rule: letters, digits and single inner hyphens, at most 39
-// characters; an app's bot account adds "[bot]".
-const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}(?:\[bot\])?$/;
+// Letters, digits and hyphens, at most 39 characters, not starting with a
+// hyphen; an app's bot account adds "[bot]". (GitHub forbids a trailing or a
+// doubled hyphen today, but older accounts have them.) No '@', no space: an
+// e-mail address or a display name never matches.
+const LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:\[bot\])?$/;
 const COMMIT = /^[0-9a-f]{7,40}$/;
 
 const isLogin = (s) => typeof s === 'string' && LOGIN.test(s);
@@ -16,12 +18,13 @@ const short = (sha) => sha.slice(0, 7);
 
 // -> {logins, why}: the author of the commit where the failure first appeared,
 // then the authors of the recent changes in the order given, each once, at
-// most three; why[i] says why logins[i] is there.
+// most three, compared without case as GitHub does; why[i] says why logins[i]
+// is there.
 function ownerHint({firstSeen, stepCommits}) {
   const logins = [];
   const why = [];
   const add = (login, reason) => {
-    if (login === null || logins.includes(login) || logins.length >= MAX_LOGINS) return;
+    if (login === null || logins.some((l) => l.toLowerCase() === login.toLowerCase()) || logins.length >= MAX_LOGINS) return;
     logins.push(login);
     why.push(`${login}: ${reason}`);
   };
