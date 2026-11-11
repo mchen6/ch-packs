@@ -10,7 +10,7 @@ const B = 'b'.repeat(64);
 const C = 'c'.repeat(64);
 let n = 0;
 // A run at minute `m` of the day, on `branch`, at `commit`.
-const run = (m, conclusion, signature, {commit = `c${m}`, branch = 'main'} = {}) => ({
+const run = (m, conclusion, signature, {commit = String(m).padStart(7, '0'), branch = 'main'} = {}) => ({
   runId: String(1000 + m),
   conclusion,
   commit,
@@ -26,8 +26,8 @@ test('groups by signature with counts and first/last seen in time order', () => 
     [A, 3, ['1001', '1002', '1005']],
     [B, 1, ['1004']]
   ]);
-  assert.deepStrictEqual(out.groups[0].firstSeen, {runId: '1001', commit: 'c1', createdAt: '2026-11-11T10:01:00Z'});
-  assert.deepStrictEqual(out.groups[0].lastSeen, {runId: '1005', commit: 'c5', createdAt: '2026-11-11T10:05:00Z'});
+  assert.deepStrictEqual(out.groups[0].firstSeen, {runId: '1001', commit: '0000001', createdAt: '2026-11-11T10:01:00Z'});
+  assert.deepStrictEqual(out.groups[0].lastSeen, {runId: '1005', commit: '0000005', createdAt: '2026-11-11T10:05:00Z'});
   assert.deepStrictEqual(out.latest, {runId: '1005', signature: A});
 });
 
@@ -45,7 +45,7 @@ test('new: seen only in the latest failed run', () => {
 });
 
 test('flaky: same commit passed elsewhere', () => {
-  const out = groupFailures(50, [run(1, 'failure', A, {commit: 'abc'}), run(2, 'success', null, {commit: 'abc', branch: 'dev'}), run(3, 'failure', A, {commit: 'def'})]);
+  const out = groupFailures(50, [run(1, 'failure', A, {commit: 'abc0000'}), run(2, 'success', null, {commit: 'abc0000', branch: 'dev'}), run(3, 'failure', A, {commit: 'def0000'})]);
   assert.strictEqual(out.groups[0].verdict, 'flaky');
 });
 
@@ -83,6 +83,21 @@ test('no run, or no failure, gives no group', () => {
   assert.deepStrictEqual(groupFailures(50, [run(1, 'success')]), {groups: [], latest: {runId: '1001', signature: null}});
 });
 
+// From /code-review medium on PR #7.
+test('a failure that passed on a rerun of the same commit is flaky, not new', () => {
+  const out = groupFailures(50, [run(1, 'failure', A, {commit: 'abc0000'}), run(2, 'success', null, {commit: 'abc0000'})]);
+  assert.strictEqual(out.groups[0].verdict, 'flaky');
+});
+
+test('new needs the latest failed run itself: an unreadable latest failure makes an older signature not new', () => {
+  const out = groupFailures(50, [run(1, 'failure', A), run(2, 'failure')]);
+  assert.strictEqual(out.groups[0].verdict, 'recurring');
+});
+
+test('a signature on a run that did not fail is not grouped', () => {
+  assert.deepStrictEqual(groupFailures(50, [run(1, 'success', A), run(2, 'other', B)]).groups, []);
+});
+
 test('handler validates its input', async () => {
   const invalid = (err) => err.code === 'ARGUMENTS_INVALID';
   const good = run(1, 'failure', A);
@@ -91,7 +106,14 @@ test('handler validates its input', async () => {
     {window: 50, runs: [{...good, conclusion: 'cancelled'}]},
     {window: 50, runs: [{...good, runId: 1001}]},
     {window: 50, runs: [{...good, signature: 'not-a-hash'}]},
-    {window: 50, runs: [{...good, createdAt: 'yesterday'}]}
+    {window: 50, runs: [{...good, createdAt: 'yesterday'}]},
+    {window: 50, runs: [{...good, createdAt: '2026-02-30T00:00:00Z'}]},
+    {window: 50, runs: [{...good, createdAt: '2026-11-11T24:00:00Z'}]},
+    {window: 50, runs: [good, {...good}]},
+    {window: 50, runs: [{...good, commit: ''}]},
+    {window: 50, runs: [{...good, commit: 'not-hex'}]},
+    {window: 50, runs: [{...good, runId: 'b'}]},
+    {window: 50, runs: [{...run(2, 'success'), signature: A}]}
   ]) {
     await assert.rejects(group(bad), invalid, JSON.stringify(bad));
   }
