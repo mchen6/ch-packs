@@ -74,3 +74,13 @@ test('jobLog validates its input', async () => {
   }
   assert.strictEqual(ctx.calls.length, 0);
 });
+
+// From /code-review medium on PR #32.
+test('without original_length, a log that fills the requested tail is truncated', async () => {
+  const lines = (n) => Array.from({length: n}, (_, i) => `synthetic line ${i + 1}`).join('\n');
+  const answer = (text) => ({result: {content: [{type: 'text', text: JSON.stringify({job_id: 1, logs_content: text, message: 'ok'})}]}});
+  const full = await jobLog({repo: 'mchen6/countinghouse', jobId: '1'}, fakeCtx({get_job_logs: answer(lines(200000))}));
+  assert.deepStrictEqual([full.output.lines, full.output.truncated], [200000, true]);
+  const small = await jobLog({repo: 'mchen6/countinghouse', jobId: '1'}, fakeCtx({get_job_logs: answer(lines(20))}));
+  assert.deepStrictEqual([small.output.lines, small.output.truncated], [20, false]);
+});

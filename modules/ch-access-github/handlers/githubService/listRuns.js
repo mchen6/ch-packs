@@ -13,7 +13,7 @@ module.exports = async (input, ctx) => {
   if (error != null) throw ctx.error('REMOTE_FAILED', `GitHub's server could not list the runs of ${input.repo}`, {serverText: error});
   if (body == null || !Array.isArray(body.workflow_runs)) throw ctx.error('REMOTE_ANSWER_INVALID', `GitHub's server answered the runs of ${input.repo} without a runs list`);
   // Only these fields leave: head_commit (names and emails) never does.
-  const runs = body.workflow_runs.map((r) => ({
+  const runs = body.workflow_runs.slice(0, limit).map((r) => ({
     runId: String(r.id),
     conclusion: r.conclusion != null ? r.conclusion : null, // null while the run is in progress
     commit: r.head_sha,

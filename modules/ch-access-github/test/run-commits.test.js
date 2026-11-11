@@ -40,3 +40,12 @@ test('runCommits validates its input', async () => {
   }
   assert.strictEqual(ctx.calls.length, 0);
 });
+
+// From /code-review medium on PR #32.
+test('a commit the server does not know is COMMIT_NOT_FOUND, other errors REMOTE_FAILED', async () => {
+  const err = (text) => ({result: {isError: true, content: [{type: 'text', text}]}});
+  const run = (text) => runCommits({repo: 'mchen6/countinghouse', commit: SHA}, fakeCtx({list_commits: err(text)}));
+  await assert.rejects(run(`failed to list commits: GET https://api.github.com/repos/mchen6/countinghouse/commits?sha=${SHA}: 404 Not Found []`), (e) => e.code === 'COMMIT_NOT_FOUND');
+  await assert.rejects(run('failed to list commits: 422 No commit found for SHA: ' + SHA), (e) => e.code === 'COMMIT_NOT_FOUND');
+  await assert.rejects(run('failed to list commits: 502 Bad Gateway'), (e) => e.code === 'REMOTE_FAILED' && /502/.test(e.details.serverText));
+});
