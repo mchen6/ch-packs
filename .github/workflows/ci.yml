@@ -44,16 +44,7 @@ jobs:
       - name: Pack
         run: npm run pack
 
-      # Until LM1 (in-process metering) lands the runtime needs Redis to serve a
-      # call. Linux runners get one in a container; macOS and Windows runners
-      # have none, so there the smoke test expects the call to fail and still
-      # proves install, start, the sandbox and the tool listing.
-      - name: Redis (Linux only, until LM1)
-        if: runner.os == 'Linux'
-        run: docker run --rm -d -p 127.0.0.1:6379:6379 --name smoke-redis redis:7-alpine
-
+      # No Redis: the runtime serves an unmetered call without one, as local
+      # mode will.
       - name: Runtime smoke test
         run: npm run smoke
-        env:
-          SMOKE_REDIS_URL: ${{ runner.os == 'Linux' && 'redis://127.0.0.1:6379' || '' }}
-          SMOKE_EXPECT_NO_REDIS: ${{ runner.os != 'Linux' && '1' || '' }}
