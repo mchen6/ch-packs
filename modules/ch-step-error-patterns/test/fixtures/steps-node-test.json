@@ -11,8 +11,6 @@
     {
       "name": "Run actions/checkout@v4",
       "lines": [
-        "with:",
-        "  repository: example/widgets",
         "Syncing repository: example/widgets",
         "[command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --depth=1 origin"
       ]
@@ -20,10 +18,9 @@
     {
       "name": "Run npm test",
       "lines": [
-        "npm test",
-        "shell: /usr/bin/bash -e {0}",
         "> widgets@1.0.0 test",
         "> node --test",
+        "|",
         "✖ adds two numbers (2.1ms)",
         "  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
         "  3 !== 4",
