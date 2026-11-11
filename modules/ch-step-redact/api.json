@@ -8,7 +8,7 @@
         "actionList": [
           {
             "name": "redact",
-            "description": "Masks the lines you supply and returns them in the same order, with every match replaced whole by a tag: bearer tokens (<token>), GitHub tokens (<githubToken>), AWS access key ids (<awsKey>), private key blocks (<privateKey>, one line for the whole block), JWTs (<jwt>), credentials in a URL (://<basicAuth>@), e-mail addresses (<email>), IPv4 addresses (<ipv4>), card-like digit runs (<card>) and phone numbers (<phone>). Also returns how many matches of each type were replaced. A count of zero is not evidence that the text holds no secret or personal data: the patterns catch the shapes listed, nothing else.",
+            "description": "Masks the lines you supply and returns them in the same order, with every match replaced whole by a tag: authorization header credentials, Bearer, Basic and token (<token>), GitHub tokens (<githubToken>), AWS access key ids and secret access keys (<awsKey>), private key blocks, PGP's included (<privateKey>, one line for the whole block, so the line count can change), JWTs (<jwt>), credentials in a URL (://<basicAuth>@), e-mail addresses (<email>), IPv4 addresses (<ipv4>), card-like digit runs (<card>) and phone numbers (<phone>). Also returns how many matches of each type were replaced. A count of zero is not evidence that the text holds no secret or personal data: the patterns catch the shapes listed, nothing else.",
             "input": {"schema": "/redactService/redact/input"},
             "output": {"schema": "/redactService/redact/output"},
             "fault": {"schema": "/fault/redactService/redact/fault"}
