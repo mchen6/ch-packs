@@ -1,0 +1,25 @@
+{
+  "device": {
+    "friendlyName": "bad-module",
+    "manufacturer": "ch-packs",
+    "modelDescription": "A test fixture with one problem: an action with no handler.",
+    "serviceList": {
+      "urn:ch-packs:serviceID:helloService": {
+        "actionList": [
+          {
+            "name": "hello",
+            "description": "Answers {text: 'hello'}.",
+            "input": {"schema": "/helloService/hello/input"},
+            "output": {"schema": "/helloService/hello/output"}
+          },
+          {
+            "name": "goodbye",
+            "description": "Declared here, with no handler: the problem this fixture holds.",
+            "input": {"schema": "/helloService/hello/input"},
+            "output": {"schema": "/helloService/hello/output"}
+          }
+        ]
+      }
+    }
+  }
+}
