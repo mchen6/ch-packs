@@ -1,6 +1,6 @@
 # Client packs: design
 
-Status: draft for Matt's approval (2026-11-11, tech). Written for a
+Status: APPROVED by Matt 2026-11-11 (~11:15 Pacific), with the business side's notes of 10:10 and 10:30 folded in; open items in section 14. Written for a
 builder who has not seen this conversation. Matt's decisions are marked
 "(Matt)"; everything else is the tech side's call and can be overruled.
 
