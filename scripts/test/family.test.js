@@ -84,3 +84,18 @@ test('the spec says where a package is published from', () => {
   const spec = read('docs/superpowers/specs/2026-11-11-client-packs-design.md');
   assert.ok(!spec.includes('`.github/workflows/publish.yml` (no token, no 2FA code; docs/publishing.md)'), 'spec decision 8');
 });
+
+// Matt and the reviewer, 2026-11-11: the usage report is the runtime's tool, ch-report is retired.
+test('the usage report is the runtime\'s countinghouse_usage_report, and ch-report is retired', () => {
+  const plan = read('docs/superpowers/plans/2026-11-11-ch-packs-v1.md');
+  // Task 10 stays as the record of what was built; everywhere else the tool is the runtime's.
+  const live = plan.slice(0, plan.indexOf('### Task 10:')) + plan.slice(plan.indexOf('### Task 11:'));
+  assert.ok(!/[^_]`usage_report`/.test(live), 'no bare usage_report tool left outside the retired Task 10');
+  assert.ok(!plan.includes('ch-report --json'), 'Task 13 runs no ch-report');
+  assert.ok(!plan.includes('uninstall --yes'), 'uninstall has no --yes; it asks on stdin');
+  assert.match(plan, /### Task 10: `ch-report` layer 1 \(retired\)/);
+  const rc1 = plan.split('\n').find((l) => l.startsWith('- RC1-min (A):'));
+  assert.match(rc1, /raw MCP `CallToolResult`/);
+  const row = read('README.md').split('\n').find((l) => l.startsWith('| `ch-report`'));
+  assert.match(row, /retired; code moves into countinghouse `lib\/usage\/`/);
+});

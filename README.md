@@ -27,7 +27,7 @@ published to npm as `@countinghouse/<name>`.
 | `ch-local` | https://github.com/mchen6/ch-local | the launcher, the client snippets, the Claude Code plugin and its marketplace, the install pages |
 | `ch-access-github` | https://github.com/mchen6/ch-access-github | the GitHub access module, over GitHub's MCP server |
 | `ch-pack-ci-failure-triage` | https://github.com/mchen6/ch-pack-ci-failure-triage | the first pack's scenario module (the repository is being created) |
-| `ch-report` | https://github.com/mchen6/ch-report | the usage report, on the command line and as an MCP tool |
+| `ch-report` | https://github.com/mchen6/ch-report | retired; code moves into countinghouse `lib/usage/`, the usage report being the runtime's built-in `countinghouse_usage_report` tool; the repository is archived after that, and the npm name is not published |
 | `ch-step-redact` | https://github.com/mchen6/ch-step-redact | step: masks secrets and personal data |
 | `ch-step-log-clean` | https://github.com/mchen6/ch-step-log-clean | step: cleans a CI log into lines and steps |
 | `ch-step-error-patterns` | https://github.com/mchen6/ch-step-error-patterns | step: finds the failing step and its error lines |

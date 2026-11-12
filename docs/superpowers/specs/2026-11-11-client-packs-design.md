@@ -200,9 +200,8 @@ reviewed like any PR.
 
 **One command.** `npx ch-local --pack ci-failure-triage` (working
 names) starts the runtime in local mode with that scenario loaded, or
-prints the per-client configuration snippet with `--snippet <client>`.
-Clients that spawn stdio servers use the same command as their `command`
-and `args`.
+prints the per-client configuration snippet with `ch-local snippet <client>`.
+Clients that spawn stdio servers run the installed launcher with Node: `command` is the absolute path of the Node that printed the snippet and `args` are `["<home>/bin/ch-local.js", "start", "--pack", "ci-failure-triage", "--stdio"]` (reviewer, 2026-11-11, Windows cannot execute an extensionless file); an nvm or system Node upgrade changes that path, and `ch-local snippet <client>` reprints the entry.
 
 **Local mode** is a runtime configuration, not a build: `--workerThread`,
 `--moduleSandbox enforce`, `--store local` (the file-backed store that replaces
@@ -251,9 +250,9 @@ An unpinned `npx ch-local` would resolve `latest` against the
 npm registry on start: a network call the design forbids, and a silent
 upgrade. So `npx ch-local install` runs once, installs the
 launcher and the chosen packs at exact versions into
-`~/.countinghouse/app/` (an npm project with a lockfile, `npm ci`), and
-the client entries point at the installed command
-(`~/.countinghouse/bin/ch-local`), never at `npx`. Starting a
+`~/.countinghouse/app/` (an npm project with the pack's lockfile, pinned at
+release, `npm ci`), and the client entries point at the installed command
+(`~/.countinghouse/bin/ch-local.js`, run with Node (reviewer, 2026-11-11, Windows cannot execute an extensionless file)), never at `npx`. Starting a
 client makes no network call.
 
 **Upgrade: easy, never silent.** `ch-local upgrade` shows the
@@ -343,7 +342,7 @@ it, so once the OAuth front lands the Codex page prefers the TOML entry
 closed source and its docs show remote entries without `type`, so the Cursor
 snippet omits it.
 
-The stdio launcher is the primary form for every local client; HTTP is for
+The stdio launcher is the primary form for every local client, run as `<node> <home>/bin/ch-local.js start --pack … --stdio` (reviewer, 2026-11-11, Windows cannot execute an extensionless file); HTTP is for
 a runtime the user keeps running (and for the phone).
 
 ## 4. Layering: access, step, scenario
