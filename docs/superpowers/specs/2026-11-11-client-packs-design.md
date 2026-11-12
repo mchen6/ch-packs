@@ -1,5 +1,7 @@
 # Client packs: design
 
+> **Design document.** It describes what is planned and decided, not what exists; what is built is stated in each package repository's README. Numbers in examples are illustrative, dates are estimates that move, and nothing here is a promise to a user.
+
 Status: APPROVED by Matt 2026-11-11 (~11:15 Pacific), with the business side's notes of 10:10 and 10:30 folded in; open items in section 14. Written for a
 builder who has not seen this conversation. Matt's decisions are marked
 "(Matt)"; everything else is the tech side's call and can be overruled.
@@ -42,7 +44,7 @@ phone.
 7. Apache-2.0 for the local runtime, the packs and the analysis tool; the
    hosted version and enterprise work are what is charged for (08:15).
    Publication timing unchanged: nothing public before Matt says so, each
-   time; the packs repository is created private.
+   time; the packs repository was created private and made public on 2026-11-12.
 8. The conversation of 2026-11-11 (this design's brainstorm):
    - the receipt lives in the tool result and the agent is asked to show
      it; the callable report is the reliable place;
@@ -156,7 +158,7 @@ its own three-OS CI, a trusted-publishing `publish.yml`, `test/support.js`
 in place of the shared harness, and `scripts/validate.js` for modules (the
 packed tarball is validated, since a standalone repository's node_modules
 holds the runtime's dependencies). Created 2026-11-11 from `ch-packs`
-12c29eb; private until Matt makes them public. `ch-packs` stays as the
+12c29eb; public since 2026-11-12, as is `ch-packs` itself (Matt). `ch-packs` stays as the
 family repository: this design, the plan, the acceptance tests (Task 13,
 from the sibling repositories' tarballs), and nothing that is published.
 The npm names are reserved now and each package is published as soon as it
@@ -484,7 +486,7 @@ launcher prints. The loop's PAT (decided 2026-11-11 00:05) gains Actions read.
 CI run failed"; the Claude Code plugin's skill says the same and shows the
 receipt line verbatim in the answer; the "both exposed" benchmark arm
 measures whether the agent reaches for it unprompted, and the first
-installable release ships with that number.
+installable release ships with that number (a business request; whether it does depends on benchmark #2's timing, not a promise).
 
 **Seconds**: the first call on a repository with many failed runs fetches
 many logs; the result says how many; subsequent calls use the cache. A
