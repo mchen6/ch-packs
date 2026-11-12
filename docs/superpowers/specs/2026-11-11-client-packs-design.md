@@ -78,7 +78,7 @@ phone.
   Cursor and gets the moment above within five minutes. That is the
   acceptance test for the first release. Until Matt lifts the
   publication rule, the test runs from local tarballs: `npm pack` of every
-  package and of a countinghouse 7.x build, installed by `ch-local install
+  package and of a countinghouse 8.0 build, installed by `ch-local install
   --from <dir>`; a private registry (Verdaccio) is the fallback if the
   tarball path proves unlike the npm path. The plan says which (business
   review, 2026-11-11).
@@ -448,7 +448,8 @@ says so).
    not been fingerprinted yet, fetch the failed jobs' logs. Logs are
    fetched only for failed runs; successful runs cost one list call.
 2. `step-log-clean`: strip timestamps, ANSI, group markers, progress
-   lines; keep step boundaries.
+   lines; keep step boundaries. Then `step-redact` over each cleaned step,
+   whole (the redaction rule below).
 3. `step-error-patterns`: the error lines (the benchmark's extraction:
    known runner and tool patterns, assertion and stack heads, the last
    lines before a non-zero exit).
@@ -462,7 +463,7 @@ says so).
    appeared and of the failing step's recent changes, from the run's
    commit metadata (no blame call in version 1); a suggestion, never an
    action.
-7. `step-redact`, then `step-report`: the result object.
+7. `step-redact` again over the picked lines, then `step-report`: the result object.
 
 **Redaction rule (reviewer, 2026-11-11, from Task 9's review):** a step's
 lines are redacted whole before any extraction picks from them, and the
@@ -470,7 +471,8 @@ picked lines again before they leave. A secret that spans lines, such as a
 private key block, is only recognisable whole; extraction may keep its
 tail without its first line. In pack 1, every cleaned log step goes
 through `step-redact` before `step-error-patterns`. The 60,000-line log
-takes about 610 ms through the chain in-process.
+takes about 610 ms through the chain in-process (one log; a first call
+fetches up to `max_logs` of them).
 
 **Output** (declared in schema.json; the README says it in words):
 `run` (id, url, branch, commit, workflow, job, step), `errors` (the few
@@ -478,7 +480,7 @@ lines, redacted, at most N), `history` (signature id, count in window,
 window size, first seen commit and date, last seen, verdict flaky/new/
 recurring, the earlier runs' ids), `owner_hint` (names and why, or null),
 `coverage` (runs listed, failed runs found, logs fetched, logs expired or
-unavailable, cache hits), and the receipt (section 6). When there is no
+unavailable, cache hits). The runtime adds the receipt beside it (section 6). When there is no
 failed run in the window, the tool says so and returns the last success;
 when logs have expired, the history says which runs were skipped and why.
 
@@ -520,10 +522,13 @@ export format on the same records. `countinghouse-usage` prints the report
 on the command line and exports JSON or CSV, so reading the audit costs no
 tokens and can be handed to someone else.
 
-**The receipt**: one line appended by the runtime to every scenario tool's
-result (a `receipt` field in the structured result and the same sentence
-in the text content): "read 48,000 log lines across 12 runs; 35 lines
-reached the model." Bytes and lines only. The word "saved" does not
+**The receipt** (reviewer's ruling, 2026-11-11): the runtime adds it to
+every scenario tool's result, in `_meta['countinghouse/receipt']` as
+`{calls, linesIn, bytesIn, linesOut, bytesOut, servers}` and as a second
+text block with its sentence, for example "read 48,210 lines (3.1 MB) in
+14 calls to github; 35 lines (2.4 KB) reached the model.". The structured
+result is the module's output, unchanged; a top-level `receipt` field is
+refused. Bytes and lines only. The word "saved" does not
 appear. The description and the skill ask the agent to show it.
 
 **The report** (the runtime's `countinghouse_usage_report` tool and
@@ -723,7 +728,8 @@ the shim, the floor question returns to Matt.
   `access-github` the day RC1-min merges → `pack-ci-failure-triage` →
   the launcher and the Claude Code plugin with B → the closed loop.
 - First installable: a Claude Code plugin and a Cursor snippet with pack 1
-  and the receipt, around 11-25; the `.mcpb` a few days after Matt's
+  and the receipt, after R2-1's module-facing part lands (Matt, 2026-11-12:
+  no raw key reaches a module first), earlier aimed at 11-25; the `.mcpb` a few days after Matt's
   probe result; packs 2 and 4 by early December; the phone route after
   the OAuth front.
 
@@ -746,7 +752,7 @@ the shim, the floor question returns to Matt.
    Matt creates the organisation, does each package's one manual first
    publish and configures its trusted publisher, on his timing. The `countinghouse` package on npm (6.1.0) is his
    account (maintainer `out4b <seeds.c@gmail.com>`, checked 2026-11-11),
-   so that name is safe; a 7.x release with RC1 and LM1 must be published
+   so that name is safe; an 8.0 release with RC1 and LM1 must be published
    before `ch-local install` can work from npm, on his timing.
 7. ~~Token figures~~: decided 10:37, an approximate token column in the
    report only (command line, export, callable tool), labelled as an
