@@ -734,6 +734,19 @@ the shim, the floor question returns to Matt.
 - Which of cloudflared and Tailscale Funnel the phone page documents
   first.
 
+After the first release (decided, not built):
+- **ci_failure_triage, annotations fallback:** when a job's log is
+  unavailable, read its check-run annotations as a fallback. This needs a new
+  read action in ch-access-github and checks:read on the user's token; decide
+  with measured data on how often logs are missing in real use. v1 lists such
+  runs under `coverage.logsUnavailable`. (The business side's survey of
+  similar tools: CI Investigator MCP does this.)
+- **If a pack ever needs an npm dependency,** the release generates one
+  lockfile for its whole pinned catalogue, install runs `npm ci` on it, and
+  add-pack becomes enable or disable of an already-installed pack. Until then,
+  packs and parts stay dependency-free (reviewer, 2026-11-12, also a
+  supply-chain virtue).
+
 ## 13. Sequencing
 
 - A: L1 (merging) → RC1-min → several servers per module → HTTP remotes
