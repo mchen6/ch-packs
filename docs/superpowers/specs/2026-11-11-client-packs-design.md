@@ -201,16 +201,34 @@ reviewed like any PR.
 
 ## 2. The launcher and local mode
 
-**One command.** `ch-local start --pack ci-failure-triage --stdio`, after a
-one-time `npx @countinghouse/ch-local install` (below), starts the runtime in
-local mode with that scenario loaded, or
-prints the per-client configuration snippet with `ch-local snippet <client>`.
-Clients that spawn stdio servers run the installed launcher with Node: `command` is the absolute path of the Node that printed the snippet and `args` are `["<home>/bin/ch-local.js", "start", "--pack", "ci-failure-triage", "--stdio"]` (reviewer, 2026-11-11, Windows cannot execute an extensionless file); an nvm or system Node upgrade changes that path, and `ch-local snippet <client>` reprints the entry.
+**One command, every pack** (Matt, 2026-11-12: adding packs after the first
+release must be easy; the reviewer's design). `ch-local start --stdio`, after a
+one-time `npx @countinghouse/ch-local install` (below), starts one runtime in
+local mode with every pack installed in the home whose credentials are present;
+a pack missing a credential is not loaded, so it is absent from `tools/list`.
+The single-identity profile lists every loaded pack's tools and
+`countinghouse_usage_report`. `ch-local snippet <client>` prints the
+per-client configuration, one MCP server entry written once by `add`, which
+never changes when packs are added or removed.
+Clients that spawn stdio servers run the installed launcher with Node: `command` is the absolute path of the Node that printed the snippet and `args` are `["<home>/bin/ch-local.js", "start", "--stdio"]` (reviewer, 2026-11-11, Windows cannot execute an extensionless file); an nvm or system Node upgrade changes that path, and `ch-local snippet <client>` reprints the entry.
+
+**Packs after the first release.** `ch-local add-pack <name>` installs a pack
+into the same home beside the others, its shared parts at the release's pinned
+version; `ch-local remove-pack <name>` removes one, keeping any part another
+installed pack still calls; `ch-local status` lists the installed packs and
+names each one's missing credential variables. Trust is unchanged: every pack's
+version and integrity are pinned per ch-local release, so a new pack arrives
+with a ch-local release and is listed by `upgrade` (opt-in, never silent). A
+signed pack index is a later option. The runtime needs nothing new for this: it
+loads several scenarios in one process (`--loadModule` once per pack; a part
+shared by two packs loads once; two packs may not list the same bare tool
+name, which the release step checks), and the launcher writes
+`remote-credentials.json` as the union of the loaded packs' declared remotes.
 
 **Local mode** is a runtime configuration, not a build: `--workerThread`,
 `--moduleSandbox enforce`, `--store local` (the file-backed store that replaces
-Redis), `--stdio`, and `--loadModule` for the scenario with its parts
-resolved from node_modules. **One user (maintainer, 2026-11-11):** a client
+Redis), `--stdio`, and `--loadModule` for each loaded pack's scenario with its
+parts resolved from node_modules. **One user (maintainer, 2026-11-11):** a client
 machine has one user who uses every hosted tool, so the runtime's
 single-identity profile applies (LM1 spec, section 4): the key and the
 scenario's `runsModules` bindings live in the process's memory, no
