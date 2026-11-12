@@ -462,6 +462,14 @@ says so).
    action.
 7. `step-redact`, then `step-report`: the result object.
 
+**Redaction rule (reviewer, 2026-11-11, from Task 9's review):** a step's
+lines are redacted whole before any extraction picks from them, and the
+picked lines again before they leave. A secret that spans lines, such as a
+private key block, is only recognisable whole; extraction may keep its
+tail without its first line. In pack 1, every cleaned log step goes
+through `step-redact` before `step-error-patterns`. The 60,000-line log
+takes about 610 ms through the chain in-process.
+
 **Output** (declared in schema.json; the README says it in words):
 `run` (id, url, branch, commit, workflow, job, step), `errors` (the few
 lines, redacted, at most N), `history` (signature id, count in window,
