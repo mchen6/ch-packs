@@ -145,8 +145,25 @@ need as ordinary features, each a reviewed PR on its own branch:
 | Node floor: 22.16 with the resolve shim (section 10) | most developers never hit the floor | B, before LM1 | conditional (section 10) |
 | UL1 usage ledger (hash-chained, exportable) | "what the packs' calls replaced", durable across sessions | B | after LM1 |
 
-The pack family is a separate repository, private until Matt says
-otherwise: this repository, `ch-packs`. Packages live under an npm scope
+**One repository per package (Matt, 2026-11-11 ~17:40, reaffirmed after
+the tech side recommended one repository).** Each package lives in its own
+GitHub repository under `mchen6`, named as the package directory
+(`ch-local`, `ch-access-github`, `ch-step-redact`, `ch-step-log-clean`,
+`ch-step-error-patterns`, `ch-step-failure-signature`, `ch-step-dedupe`,
+`ch-step-owner-hint`, `ch-step-report`, `ch-pack-ci-failure-triage`,
+`ch-report`; `ch-trace-report` keeps `countinghouse-trace-report`), each with
+its own three-OS CI, a trusted-publishing `publish.yml`, `test/support.js`
+in place of the shared harness, and `scripts/validate.js` for modules (the
+packed tarball is validated, since a standalone repository's node_modules
+holds the runtime's dependencies). Created 2026-11-11 from `ch-packs`
+12c29eb; private until Matt makes them public. `ch-packs` stays as the
+family repository: this design, the plan, the acceptance tests (Task 13,
+from the sibling repositories' tarballs), and nothing that is published.
+The npm names are reserved now and each package is published as soon as it
+is ready (Matt, same decision; the "nothing before January 2027" rule no
+longer applies to the packs).
+
+The pack family's design repository is `ch-packs`. Packages live under an npm scope
 Matt owns, `@countinghouse` (Matt, 2026-11-11 10:38 for an owned scope; the name on 2026-11-11 ~17:00),
 and keep the `ch-` prefix inside it (tech's call) so names stay
 recognisable; creating the organisation and publishing are Matt's, on his
