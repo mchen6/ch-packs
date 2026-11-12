@@ -89,7 +89,9 @@ test('the spec says where a package is published from', () => {
 test('the usage report is the runtime\'s countinghouse_usage_report, and ch-report is retired', () => {
   const plan = read('docs/superpowers/plans/2026-11-11-ch-packs-v1.md');
   // Task 10 stays as the record of what was built; everywhere else the tool is the runtime's.
-  const live = plan.slice(0, plan.indexOf('### Task 10:')) + plan.slice(plan.indexOf('### Task 11:'));
+  const [t10, t11] = [plan.indexOf('### Task 10:'), plan.indexOf('### Task 11:')];
+  assert.ok(t10 > 0 && t11 > t10, 'Task 10 and Task 11 headings found');
+  const live = plan.slice(0, t10) + plan.slice(t11);
   assert.ok(!/[^_]`usage_report`/.test(live), 'no bare usage_report tool left outside the retired Task 10');
   assert.ok(!plan.includes('ch-report --json'), 'Task 13 runs no ch-report');
   assert.ok(!plan.includes('uninstall --yes'), 'uninstall has no --yes; it asks on stdin');
@@ -98,4 +100,31 @@ test('the usage report is the runtime\'s countinghouse_usage_report, and ch-repo
   assert.match(rc1, /raw MCP `CallToolResult`/);
   const row = read('README.md').split('\n').find((l) => l.startsWith('| `ch-report`'));
   assert.match(row, /retired; code moves into countinghouse `lib\/usage\/`/);
+});
+
+// From /code-review medium on #38: the decisions reach every line, spec included.
+test('no plan or spec line still describes a retired report or the old launcher', () => {
+  const plan = read('docs/superpowers/plans/2026-11-11-ch-packs-v1.md');
+  const spec = read('docs/superpowers/specs/2026-11-11-client-packs-design.md');
+  const [t10, t11] = [plan.indexOf('### Task 10:'), plan.indexOf('### Task 11:')];
+  const live = plan.slice(0, t10) + plan.slice(t11);
+  for (const [where, text] of [['plan', live], ['spec', spec]]) {
+    assert.ok(!text.includes('ch-local report'), `${where}: ch-local report`);
+    assert.ok(!/bin\/ch-local start|bin\/ch-local\)/.test(text), `${where}: the extensionless launcher`);
+    assert.ok(!text.includes('npx ch-local --pack'), `${where}: the unpinned npx form`);
+  }
+  assert.ok(!live.includes('generated package.json + lockfile'), 'Task 11: install writes the pinned lockfile');
+  assert.ok(!live.includes('exactly two tools'), 'Task 13: the pack\'s tool and the runtime\'s, not a count of every built-in');
+  for (const line of spec.split('\n').filter((l) => l.includes('ch-report'))) assert.match(line, /retired/, line);
+  const constraint = plan.split('\n').find((l) => l.startsWith('- The report'));
+  assert.match(constraint, /countinghouse_usage_report/);
+});
+
+test('the repository comes from DeviceConfig.defaultRepo, written by start (reviewer, 2026-11-11)', () => {
+  const plan = read('docs/superpowers/plans/2026-11-11-ch-packs-v1.md');
+  const task = (n) => plan.slice(plan.indexOf(`### Task ${n}:`), plan.indexOf(`### Task ${n + 1}:`));
+  assert.match(task(9), /DeviceConfig\.defaultRepo/);
+  assert.match(task(9), /REPO_REQUIRED/);
+  assert.ok(!task(9).includes('COUNTINGHOUSE_CWD'), 'no invented interface');
+  assert.match(task(11), /--deviceConfigPath <home>\/config\/<pid>/);
 });

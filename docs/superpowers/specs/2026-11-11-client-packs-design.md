@@ -150,8 +150,8 @@ the tech side recommended one repository).** Each package lives in its own
 GitHub repository under `mchen6`, named as the package directory
 (`ch-local`, `ch-access-github`, `ch-step-redact`, `ch-step-log-clean`,
 `ch-step-error-patterns`, `ch-step-failure-signature`, `ch-step-dedupe`,
-`ch-step-owner-hint`, `ch-step-report`, `ch-pack-ci-failure-triage`,
-`ch-report`; `ch-trace-report` keeps `countinghouse-trace-report`), each with
+`ch-step-owner-hint`, `ch-step-report`, `ch-pack-ci-failure-triage`, and
+`ch-report`, now retired (Matt, 2026-11-11: its code moves into countinghouse `lib/usage/`, the repository is archived and the npm name is not published); `ch-trace-report` keeps `countinghouse-trace-report`), each with
 its own three-OS CI, a trusted-publishing `publish.yml`, `test/support.js`
 in place of the shared harness, and `scripts/validate.js` for modules (the
 packed tarball is validated, since a standalone repository's node_modules
@@ -168,7 +168,7 @@ Matt owns, `@countinghouse` (Matt, 2026-11-11 10:38 for an owned scope; the name
 and keep the `ch-` prefix inside it (tech's call) so names stay
 recognisable; creating the organisation and publishing are Matt's, on his
 timing. Names: `ch-local` (the launcher), `ch-access-<server>`,
-`ch-step-<name>`, `ch-pack-<scenario>`, `ch-report` (the report tool),
+`ch-step-<name>`, `ch-pack-<scenario>`, `ch-report` (retired: the usage report is the runtime's `countinghouse_usage_report`),
 `ch-trace-report` (the analysis tool, from its own repository). It contains:
 Unscoped names cannot be protected as a family: anyone can publish a
 `ch-pack-<x>` that looks like ours, and the install pulls packages by name
@@ -184,8 +184,9 @@ allowlist, pinned by version and integrity hash, never an arbitrary name.
 - `access/<server>/`, `steps/<name>/`, `packs/<scenario>/`: the modules
   (section 4).
 - `analysis/`: the trace-report tool, moved here from its private
-  repository as a standalone MCP tool with no countinghouse dependency,
-  plus the report tool that reads the runtime's counters (section 6).
+  repository as a standalone MCP tool with no countinghouse dependency.
+  The usage report is not here: it is the runtime's built-in
+  `countinghouse_usage_report` (section 6).
 - `clients/`: the Claude Code plugin (marketplace manifest, skill, MCP
   config), the `.mcpb` builder, and the Cursor, VS Code and Codex snippets.
 - `docs/`: this design, the per-client install pages, the pack READMEs'
@@ -198,8 +199,9 @@ reviewed like any PR.
 
 ## 2. The launcher and local mode
 
-**One command.** `npx ch-local --pack ci-failure-triage` (working
-names) starts the runtime in local mode with that scenario loaded, or
+**One command.** `ch-local start --pack ci-failure-triage --stdio`, after a
+one-time `npx @countinghouse/ch-local install` (below), starts the runtime in
+local mode with that scenario loaded, or
 prints the per-client configuration snippet with `ch-local snippet <client>`.
 Clients that spawn stdio servers run the installed launcher with Node: `command` is the absolute path of the Node that printed the snippet and `args` are `["<home>/bin/ch-local.js", "start", "--pack", "ci-failure-triage", "--stdio"]` (reviewer, 2026-11-11, Windows cannot execute an extensionless file); an nvm or system Node upgrade changes that path, and `ch-local snippet <client>` reprints the entry.
 
@@ -501,11 +503,12 @@ stdio session, and "what happened this week" could not be answered). One
 record per call: time, MCP session id when the client sends one, pack,
 tool, server, bytes and lines in and out, duration, outcome, and the name
 (never the value) of the credential used. Exact counts; nothing estimated.
-The report tool reads these files, so it needs no running runtime and no
-port; UL1 later adds the hash chain and the export format on the same
-records. `ch-local report` prints the report on the command
-line and exports JSON or CSV, so reading the audit costs no tokens and can
-be handed to someone else.
+The runtime's report reads these files (Matt, 2026-11-11: the built-in
+`countinghouse_usage_report` tool and the `countinghouse-usage` command,
+LM1 spec §5), so it needs no port; UL1 later adds the hash chain and the
+export format on the same records. `countinghouse-usage` prints the report
+on the command line and exports JSON or CSV, so reading the audit costs no
+tokens and can be handed to someone else.
 
 **The receipt**: one line appended by the runtime to every scenario tool's
 result (a `receipt` field in the structured result and the same sentence
@@ -513,8 +516,9 @@ in the text content): "read 48,000 log lines across 12 runs; 35 lines
 reached the model." Bytes and lines only. The word "saved" does not
 appear. The description and the skill ask the agent to show it.
 
-**The report tool** (`analysis/`, a standard MCP tool, also usable with no
-countinghouse at all):
+**The report** (the runtime's `countinghouse_usage_report` tool and
+`countinghouse-usage` command, LM1 spec §5; Matt, 2026-11-11, in place of a
+report tool of the family's own):
 
 - Layer 1, every client: from the runtime's counters (read over the
   runtime's local HTTP endpoint or the shared counters file): calls, bytes
