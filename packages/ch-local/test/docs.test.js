@@ -16,6 +16,20 @@ test('every client has an install page with its snippet command and a removal se
   }
 });
 
+test('the Claude Code page says which shells the add line is for', () => {
+  const page = fs.readFileSync(path.join(DOCS, 'claude-code.md'), 'utf8');
+  assert.match(page, /PowerShell/);
+  assert.match(page, /cmd\.exe/);
+});
+
+test('every package name the docs, skill and launcher print uses the scope', () => {
+  const {SCOPE} = require('../../../scripts/lib/scope');
+  const files = [...fs.readdirSync(DOCS).map((f) => path.join(DOCS, f)), path.join(__dirname, '..', 'clients', 'claude-code', 'skills', 'ci-failure-triage', 'SKILL.md'), path.join(__dirname, '..', 'clients', 'claude-code', 'bin', 'launch.js')];
+  for (const file of files) {
+    for (const m of fs.readFileSync(file, 'utf8').matchAll(/npx (\S+)\/ch-local/g)) assert.strictEqual(m[1], SCOPE, file);
+  }
+});
+
 test('pages that pin a node say an upgrade changes it and how to reprint', () => {
   for (const client of CLIENTS.filter((c) => c !== 'claude-desktop')) {
     const page = fs.readFileSync(path.join(DOCS, `${client}.md`), 'utf8');

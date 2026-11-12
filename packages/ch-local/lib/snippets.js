@@ -40,7 +40,12 @@ const RENDER = {
     `args = [${argsOf(launcher).map(toml).join(', ')}]`,
     `env_vars = [${CREDENTIALS.map(toml).join(', ')}]`
   ].join('\n') + '\n',
-  'claude-desktop': () => [
+  'claude-desktop': () => ''
+};
+
+// What a client gets instead of an entry, on stderr.
+const NOTES = {
+  'claude-desktop': [
     'Claude Desktop has no config entry to paste.',
     'Desktop does not see your shell\'s environment, and a GitHub token is never written to a config file,',
     'so the route for Desktop is the .mcpb bundle, which keeps the token in the OS keychain.',
@@ -48,12 +53,14 @@ const RENDER = {
   ].join('\n') + '\n'
 };
 
-// {node, launcher} -> {text}. Throws on an unknown client.
+// {node, launcher} -> {text, note?}: text is the entry to paste (empty when
+// there is none), note says why there is none. Throws on an unknown client.
 function snippet(client, {node, launcher}) {
   if (!Object.prototype.hasOwnProperty.call(RENDER, client)) {
     throw new Error(`unknown client "${client}"; one of: ${CLIENTS.join(', ')}`);
   }
-  return {text: RENDER[client]({node, launcher})};
+  const text = RENDER[client]({node, launcher});
+  return NOTES[client] != null ? {text, note: NOTES[client]} : {text};
 }
 
 module.exports = {snippet, CLIENTS, SERVER, PACK};

@@ -17,7 +17,9 @@ for this machine, for example:
     claude mcp add --scope user ci-failure-triage --env 'COUNTINGHOUSE_GITHUB_TOKEN=${COUNTINGHOUSE_GITHUB_TOKEN:-}' --env 'GITHUB_TOKEN=${GITHUB_TOKEN:-}' -- /usr/local/bin/node /home/you/.countinghouse/bin/ch-local.js start --pack ci-failure-triage --stdio
 
 The single quotes matter: they keep your shell from putting the token's value
-into the config. Claude Code expands `${VAR:-}` itself when it starts the
+into the config. The line is for a POSIX shell (bash, zsh) or PowerShell, which
+both read single quotes literally; Windows `cmd.exe` does not, so on Windows
+run it in PowerShell, or use the plugin. Claude Code expands `${VAR:-}` itself when it starts the
 server ([docs](https://code.claude.com/docs/en/mcp)).
 
 ## Token
@@ -30,7 +32,8 @@ from. Never paste a token into the conversation or into a config file.
 The hand-added entry names the absolute path of your Node. An nvm or system
 Node upgrade changes that path: run `ch-local snippet claude-code` again,
 then `claude mcp remove --scope user ci-failure-triage` and add the new line.
-The plugin runs `node` from your `PATH` and needs nothing.
+The plugin runs `node` from the `PATH` Claude Code sees, which must be Node
+22.16 or later; below that it stops with one line saying so.
 
 ## Remove
 

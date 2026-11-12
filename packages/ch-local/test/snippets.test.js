@@ -13,7 +13,10 @@ const golden = (client) => fs.readFileSync(path.join(GOLDEN, `${client}.txt`), '
 
 test('snippets match the fixtures per client', () => {
   assert.deepStrictEqual(CLIENTS, ['claude-code', 'cursor', 'vscode', 'codex', 'claude-desktop']);
-  for (const client of CLIENTS) assert.strictEqual(snippet(client, POSIX).text, golden(client), client);
+  for (const client of CLIENTS) {
+    const s = snippet(client, POSIX);
+    assert.strictEqual(client === 'claude-desktop' ? s.note : s.text, golden(client), client);
+  }
 });
 
 test('JSON snippets parse and name the pinned node and the launcher', () => {
@@ -47,11 +50,14 @@ test('credentials are named, never given a value', () => {
 });
 
 test('Claude Desktop gets a note, not an entry', () => {
-  const {text} = snippet('claude-desktop', POSIX);
-  assert.match(text, /does not see your shell's environment/);
-  assert.match(text, /never written to a config file/);
-  assert.match(text, /keychain/);
-  assert.ok(!text.includes(POSIX.node));
+  const {text, note} = snippet('claude-desktop', POSIX);
+  assert.strictEqual(text, '', 'nothing to paste');
+  assert.strictEqual(note, golden('claude-desktop'));
+  const prose = note;
+  assert.match(prose, /does not see your shell's environment/);
+  assert.match(prose, /never written to a config file/);
+  assert.match(prose, /keychain/);
+  assert.ok(!prose.includes(POSIX.node));
 });
 
 test('an unknown client is refused', () => {

@@ -14,8 +14,19 @@ function main(argv, {stdout, stderr, env, node}) {
     stderr.write(USAGE);
     return 2;
   }
-  stdout.write(snippet(client, {node, launcher: launcherPath(env)}).text);
-  if (client !== 'claude-desktop') {
+  let launcher;
+  try {
+    launcher = launcherPath(env);
+  } catch (err) {
+    if (err.code !== 'HOME_RELATIVE') throw err;
+    stderr.write(`ch-local: ${err.message}\n`);
+    return 2;
+  }
+  const {text, note} = snippet(client, {node, launcher});
+  stdout.write(text);
+  if (note != null) {
+    stderr.write(note);
+  } else {
     stderr.write(`ch-local: the entry runs the Node at ${node}.\n`);
     stderr.write(`ch-local: an nvm or system Node upgrade changes this path; run \`ch-local snippet ${client}\` again to reprint the entry.\n`);
   }

@@ -183,7 +183,7 @@ reviewed like any PR.
 
 **One command.** `npx ch-local --pack ci-failure-triage` (working
 names) starts the runtime in local mode with that scenario loaded, or
-prints the per-client configuration snippet with `--snippet <client>`.
+prints the per-client configuration snippet with `ch-local snippet <client>`.
 Clients that spawn stdio servers run the installed launcher, `<home>/bin/ch-local.js`, with Node: `command` is the absolute path of the Node that printed the snippet and `args` are `["<home>/bin/ch-local.js", "start", "--pack", "ci-failure-triage", "--stdio"]` (reviewer, 2026-11-11, Windows cannot execute an extensionless file); an nvm or system Node upgrade changes that path, and `ch-local snippet <client>` reprints the entry.
 
 **Local mode** is a runtime configuration, not a build: `--workerThread`,

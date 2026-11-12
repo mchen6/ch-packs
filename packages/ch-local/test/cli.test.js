@@ -34,10 +34,19 @@ test('without COUNTINGHOUSE_HOME the home is ~/.countinghouse', () => {
   assert.ok(r.stdout.includes(JSON.stringify(path.join(os.homedir(), '.countinghouse', 'bin', 'ch-local.js'))));
 });
 
-test('claude-desktop prints its note and exits 0', () => {
+test('claude-desktop prints its note on stderr, nothing on stdout, and exits 0', () => {
   const r = run(['snippet', 'claude-desktop'], {});
   assert.strictEqual(r.status, 0);
-  assert.match(r.stdout, /\.mcpb bundle/);
+  assert.strictEqual(r.stdout, '');
+  assert.match(r.stderr, /\.mcpb bundle/);
+});
+
+// From /code-review medium on PR #34.
+test('a relative COUNTINGHOUSE_HOME is refused, never resolved against the current directory', () => {
+  const r = run(['snippet', 'cursor'], {COUNTINGHOUSE_HOME: '.countinghouse'});
+  assert.strictEqual(r.status, 2);
+  assert.strictEqual(r.stdout, '');
+  assert.match(r.stderr, /COUNTINGHOUSE_HOME must be an absolute path/);
 });
 
 test('an unknown client or command exits 2 with usage', () => {
