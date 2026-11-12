@@ -2,27 +2,12 @@
   "name": "ch-packs",
   "version": "0.0.0",
   "private": true,
-  "description": "countinghouse client packs: the local launcher, access, step and scenario modules, and the usage report",
+  "description": "The countinghouse client packs' family repository: the design, the plan and the cross-package acceptance tests. Each package lives in its own repository.",
   "license": "Apache-2.0",
-  "workspaces": [
-    "modules/*",
-    "packages/*"
-  ],
   "engines": {
     "node": ">=22.16"
   },
   "scripts": {
-    "test": "node --test \"scripts/test/*.test.js\" \"modules/*/test/*.test.js\" \"packages/*/test/*.test.js\"",
-    "validate": "node scripts/validate-modules.js modules",
-    "pack": "node scripts/pack-all.js",
-    "smoke": "node scripts/smoke-runtime.js"
-  },
-  "devDependencies": {
-    "countinghouse": "git+https://github.com/mchen6/countinghouse.git#9e1cdb591f470ea502f060ed70ce244bdab633fe"
-  },
-  "allowScripts": {
-    "dtrace-provider": false,
-    "msgpackr-extract": false,
-    "sqlite3": false
+    "test": "node --test \"scripts/test/*.test.js\""
   }
 }

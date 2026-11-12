@@ -15,40 +15,18 @@ concurrency:
 permissions:
   contents: read
 
+# The family repository has no package and no dependency: CI checks its own
+# shape (scripts/test). Each package's CI runs in its own repository; Task 13's
+# acceptance workflow, from the sibling repositories' tarballs, comes here.
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        # Add '22.16' (and latest 22) when countinghouse's Node floor shim lands
-        # (spec section 10); until then the runtime needs 24.15+.
-        node: ['24']
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+          node-version: '24'
 
       - name: Test
         run: npm test
-
-      - name: Validate modules
-        run: npm run validate
-
-      - name: Pack
-        run: npm run pack
-
-      # No Redis: the runtime serves an unmetered call without one, as local
-      # mode will.
-      # On Windows the runtime never brings a module online (any sandbox mode):
-      # countinghouse issue #40. Our own tests, validation and packing gate on
-      # Windows; this marker comes off when #40 is fixed.
-      - name: Runtime smoke test
-        run: npm run smoke
-        continue-on-error: ${{ runner.os == 'Windows' }}
