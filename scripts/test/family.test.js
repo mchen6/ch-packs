@@ -10,26 +10,35 @@ const {spawnSync} = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const tracked = spawnSync('git', ['ls-files'], {cwd: ROOT, encoding: 'utf8'}).stdout.split('\n').filter(Boolean);
+const ls = spawnSync('git', ['ls-files'], {cwd: ROOT, encoding: 'utf8'});
+if (ls.error || ls.status !== 0) throw new Error(`these tests read a git checkout: git ls-files failed (${ls.error ? ls.error.code : ls.stderr.trim()})`);
+const tracked = ls.stdout.split('\n').filter(Boolean);
+// From /code-review medium on #37: an empty list would pass every "not tracked" check.
+if (!tracked.includes('package.json')) throw new Error('git ls-files listed no package.json: not this repository');
 
 const REPOS = ['ch-local', 'ch-access-github', 'ch-pack-ci-failure-triage', 'ch-report',
   'ch-step-redact', 'ch-step-log-clean', 'ch-step-error-patterns', 'ch-step-failure-signature',
   'ch-step-dedupe', 'ch-step-owner-hint', 'ch-step-report'];
 
 test('no package lives here any more', () => {
-  for (const dir of ['modules/', 'packages/', 'test-support/', 'dist/']) {
+  for (const dir of ['modules/', 'packages/', 'test-support/', 'scripts/lib/']) {
     assert.deepStrictEqual(tracked.filter((f) => f.startsWith(dir)), [], dir);
   }
-  for (const file of ['package-lock.json', '.github/workflows/publish.yml', 'scripts/lib/scope.js', 'scripts/pack-all.js',
+  for (const file of ['.github/workflows/publish.yml', 'scripts/pack-all.js',
     'scripts/validate-modules.js', 'scripts/publish-changed.js', 'scripts/test-usage-fixture.js', 'scripts/smoke-runtime.js']) {
     assert.ok(!tracked.includes(file), file);
   }
 });
 
-test('the root package.json is private, with no workspaces and no dependencies', () => {
+// Task 13 adds what its acceptance script needs; a family package never comes
+// back as a dependency: the acceptance installs them from their own tarballs.
+test('the root package.json is private, with no workspaces and no family package as a dependency', () => {
   const pkg = JSON.parse(read('package.json'));
   assert.strictEqual(pkg.private, true);
-  for (const key of ['workspaces', 'dependencies', 'devDependencies', 'allowScripts']) assert.ok(!(key in pkg), key);
+  assert.ok(!('workspaces' in pkg), 'workspaces');
+  for (const key of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+    for (const name of Object.keys(pkg[key] || {})) assert.ok(!name.startsWith('@countinghouse/ch-'), `${key}: ${name}`);
+  }
 });
 
 test('the README says where each package lives', () => {
@@ -40,8 +49,10 @@ test('the README says where each package lives', () => {
 test('nothing is published from here: publishing.md points at the package repositories', () => {
   const doc = read('docs/publishing.md');
   assert.match(doc, /Nothing is published from ch-packs/);
-  assert.ok(doc.split(/\n\s*\n/).filter((p) => !p.startsWith('#')).length === 1, 'one paragraph');
-  assert.match(doc, /README/);
+  const paragraphs = doc.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p !== '' && !p.startsWith('#'));
+  assert.strictEqual(paragraphs.length, 1, 'one paragraph');
+  for (const name of REPOS) assert.ok(doc.includes(name) || (name.startsWith('ch-step-') && doc.includes('ch-step-*')), name);
+  assert.ok(!/before Matt says so|January 2027/.test(doc), 'the spec: each package is published as soon as it is ready');
 });
 
 test('the plan reads the per-repository layout', () => {
@@ -50,5 +61,26 @@ test('the plan reads the per-repository layout', () => {
   const task = (n) => plan.slice(plan.indexOf(`### Task ${n}:`), plan.indexOf(`### Task ${n + 1}:`));
   for (const n of [11, 12]) assert.match(task(n), /mchen6\/ch-local/, `Task ${n}`);
   assert.match(task(13), /sibling repositories/);
+  assert.match(task(13), /ACCEPTANCE_REPOS_TOKEN/, 'Task 13 says how it reads private sibling repositories');
+  // From /code-review medium on #37: the plan no longer names monorepo files as current.
+  assert.ok(!plan.includes('in code as one constant, `scripts/lib/scope.js`'), 'Global Constraints: the scope constant');
+  assert.ok(!plan.includes('`scripts/test-usage-fixture.js` (root)'), 'Task 10');
+  assert.ok(!plan.includes('**Architecture:** One repository, npm workspaces'), 'Architecture');
+  const rc1 = plan.split('\n').find((l) => l.startsWith('- RC1-min (A):'));
+  assert.match(rc1, /headers: \{/, 'the plan\'s RC1-min remote shape has headers');
+  assert.match(rc1, /fallbackEnv/, 'and fallbackEnv');
   assert.ok(!task(13).includes('`npm run pack` (Task 1)'), 'Task 13 no longer packs a monorepo');
+});
+
+test('.gitignore keeps tarballs and npm logs out, and names no fixture this repository does not have', () => {
+  const ignored = (p) => spawnSync('git', ['check-ignore', '-q', p], {cwd: ROOT}).status === 0;
+  assert.strictEqual(ignored('dist/x.tgz'), true);
+  assert.strictEqual(ignored('npm-debug.log'), true);
+  assert.ok(!/fixtures/.test(read('.gitignore')), '.gitignore');
+  assert.ok(!/fixture/.test(read('.gitattributes')), '.gitattributes');
+});
+
+test('the spec says where a package is published from', () => {
+  const spec = read('docs/superpowers/specs/2026-11-11-client-packs-design.md');
+  assert.ok(!spec.includes('`.github/workflows/publish.yml` (no token, no 2FA code; docs/publishing.md)'), 'spec decision 8');
 });

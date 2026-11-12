@@ -1,7 +1,5 @@
 node_modules/
 .DS_Store
 *.log
-# Log fixtures are kept byte for byte (.gitattributes) and committed.
-!**/test/fixtures/**/*.log
 dist/
 .superpowers/

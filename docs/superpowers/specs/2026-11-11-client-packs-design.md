@@ -729,7 +729,7 @@ the shim, the floor question returns to Matt.
    implements it.
 8. ~~npm scope~~: decided 10:38, an owned scope; named `@countinghouse` on
    2026-11-11 ~17:00. Releases publish by npm trusted publishing from
-   `.github/workflows/publish.yml` (no token, no 2FA code; docs/publishing.md);
+   each package repository's `.github/workflows/publish.yml` (no token, no 2FA code; that repository's README);
    Matt creates the organisation, does each package's one manual first
    publish and configures its trusted publisher, on his timing. The `countinghouse` package on npm (6.1.0) is his
    account (maintainer `out4b <seeds.c@gmail.com>`, checked 2026-11-11),
