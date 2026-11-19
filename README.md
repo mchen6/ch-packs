@@ -17,6 +17,20 @@ receipt of what was read and what was returned.
 No package lives here, and nothing is published from here
 ([docs/publishing.md](docs/publishing.md)).
 
+## Packs and modules
+
+A pack is an install list: a named list of related modules that are
+installed together (`ch-local install --pack <name>`, `ch-local add-pack
+<name>`). After install, everything deals in modules. All configuration is
+the module's own: its settings, its credential (`ch-local credentials add
+<module>`) and whether it is on. A pack has no settings, no credential and no
+on/off switch, and nothing runs as a pack: modules load, a module shared by
+two packs once. A release's pins describe each module from its own
+manifest (`modules.<package>`: the credentials its remotes declare, the
+modules it calls, the settings it marks `confirm`), written by the release
+step. The design is countinghouse's
+[module-level configuration and install](https://github.com/mchen6/countinghouse/blob/master/docs/superpowers/specs/2026-11-18-module-level-configuration-and-install-design.md).
+
 ## Where each package lives
 
 Each package has its own repository under `mchen6` (Matt, 2026-11-11) and is
