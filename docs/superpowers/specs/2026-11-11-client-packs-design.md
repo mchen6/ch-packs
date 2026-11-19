@@ -6,6 +6,15 @@ Status: APPROVED by Matt 2026-11-11 (~11:15 Pacific), with the business side's n
 builder who has not seen this conversation. Matt's decisions are marked
 "(Matt)"; everything else is the tech side's call and can be overruled.
 
+> **Superseded in part (2026-11-18).** What this design says about a pack as
+> something that loads, is configured or holds a credential is replaced by
+> countinghouse's [module-level configuration and install design](https://github.com/mchen6/countinghouse/blob/master/docs/superpowers/specs/2026-11-18-module-level-configuration-and-install-design.md):
+> a pack is an install list, a named list of related modules installed
+> together; after install, everything deals in modules, and all
+> configuration (settings, the credential, on or off) is the module's own.
+> The passages below that it changes are updated to match; where any other
+> passage disagrees with it, that design holds.
+
 ## Intent
 
 A developer installs one thing into the agent they already use (Claude Code,
@@ -204,9 +213,11 @@ reviewed like any PR.
 **One command, every pack** (Matt, 2026-11-12: adding packs after the first
 release must be easy; the reviewer's design). `ch-local start --stdio`, after a
 one-time `npx @countinghouse/ch-local install` (below), starts one runtime in
-local mode with every pack installed in the home whose credentials are present;
-a pack missing a credential is not loaded, so it is absent from `tools/list`.
-The single-identity profile lists every loaded pack's tools and
+local mode with every installed module that is on and has what it needs; a
+module missing its credential is not loaded, nor is a module that calls it, so
+their tools are absent from `tools/list`, and the start names the module to
+give one with `ch-local credentials add <module>`.
+The single-identity profile lists every loaded module's tools and
 `countinghouse_usage_report`. `ch-local snippet <client>` prints the
 per-client configuration, one MCP server entry written once by `add`, which
 never changes when packs are added or removed.
@@ -215,15 +226,20 @@ Clients that spawn stdio servers run the installed launcher with Node: `command`
 **Packs after the first release.** `ch-local add-pack <name>` installs a pack
 into the same home beside the others, its shared parts at the release's pinned
 version; `ch-local remove-pack <name>` removes one, keeping any part another
-installed pack still calls; `ch-local status` lists the installed packs and
-names each one's missing credential variables. Trust is unchanged: every pack's
+installed pack still calls; `ch-local status` lists the installed modules, each
+with whether it loads, and names those that need a credential. Trust is unchanged: every pack's
 version and integrity are pinned per ch-local release, so a new pack arrives
 with a ch-local release and is listed by `upgrade` (opt-in, never silent). A
 signed pack index is a later option. The runtime needs nothing new for this: it
-loads several scenarios in one process (`--loadModule` once per pack; a part
-shared by two packs loads once; two packs may not list the same bare tool
-name, which the release step checks), and the launcher writes
-`remote-credentials.json` as the union of the loaded packs' declared remotes.
+loads several top-level modules in one process (a module shared by two packs
+loads once; two modules may not list the same bare tool name, which the release
+step checks). A credential is the module's own: ch-local's store binds it to
+(module, variable) and to the origin the module's remote declares, and a start
+gives the runtime only those bindings. The release step also writes, for each
+module of each pack, what its manifest declares into the release's pins
+(`modules.<package>`: its credentials as variable and origin, the modules it
+calls, the settings it marks `confirm`), so ch-local knows them before anything
+is fetched.
 
 **Local mode** is a runtime configuration, not a build: `--workerThread`,
 `--moduleSandbox enforce`, `--store local` (the file-backed store that replaces
@@ -418,11 +434,13 @@ the receipt (section 6), which the runtime attaches, not the module.
 scenario lists its access and step modules under `dependencies` with caret
 ranges; its lockfile records what it was tested with; a release of a
 scenario is tested against the versions it pins. A user installs one
-scenario package; npm pulls its parts; the credentials to set are the
-union of its access modules' variables, and the launcher prints them. Two
-scenarios installed together share an access module at one version per
-node_modules resolution, which is npm's ordinary rule; the runtime loads
-each module once per path.
+pack, a list of modules; each access module that declares a credential is
+given one with `ch-local credentials add <module>`, and `ch-local status`
+names those still missing. Two packs installed together share a module: the
+store holds each module version once, and the version that runs is the
+release's pin (between packs from different pins, the highest any pack
+records, with a question before a breaking update of a module others call);
+the runtime loads each module once.
 
 **Composition and identity.** A scenario's `calls` entries name
 `<module>/<service>.<action>`, enforced on the main thread (R2-1). The
@@ -443,9 +461,10 @@ never emails or display names, and the scenario's README says that
 colleagues' logins are part of the output; `--no-owner-hint` turns it off.
 
 **Missing server or credential.** Refused at load, not at call time: the
-scenario does not load, the error names the server and the variable, the
-scenario's tools are absent from tools/list, and the launcher's output
-says so once. Other scenarios load normally.
+module does not load, nor does a module that calls it; the line names the
+module, the variable and the origin it is sent to, and how to give it
+(`ch-local credentials add <module>`); their tools are absent from
+tools/list, and the start says so once. Every other module loads normally.
 
 ## 5. Pack 1: CI failure triage
 
@@ -507,8 +526,11 @@ run id, job id, signature, error-line hashes, step name, commit, dates.
 Never a raw log line, never a token. A rerun fetches only new failed runs.
 
 **Credential**: a fine-grained PAT with Metadata, Contents and Actions
-read on the repositories in question, in `GITHUB_TOKEN` or a name the
-launcher prints. The loop's PAT (decided 2026-11-11 00:05) gains Actions read.
+read on the repositories in question: ch-access-github's own credential,
+declared as `"credential": "GITHUB_TOKEN"` and sent only to
+`https://api.githubcopilot.com`, stored with `ch-local credentials add
+ch-access-github` (typed, piped with `--to`, or the GitHub CLI's login token
+after a yes). The loop's PAT (decided 2026-11-11 00:05) gains Actions read.
 
 **Agent adoption**: the tool description leads with "Call this first when a
 CI run failed"; the Claude Code plugin's skill says the same and shows the
@@ -642,11 +664,13 @@ README: a REST surface is ours to maintain; an MCP surface is the vendor's.
 
 Order (Matt, 10:38): 1, 2, 4 (MCP remotes), then 3, 5, 6, 7 (HTTP
 remotes), then 8.
-Credentials are environment variables named by the access module; the
-launcher prints which are missing and which name it used; the main thread
-holds them; no module sees one. For GitHub the launcher reads
-`COUNTINGHOUSE_GITHUB_TOKEN` first and falls back to `GITHUB_TOKEN`, says
-which it used (name only), and at load probes once for the Actions read
+Credentials belong to the access module that declares them: a variable
+name in its remote declaration, bound per module to the declared URL's
+origin and entered at a terminal with `ch-local credentials add <module>`;
+the main thread holds them; no module sees one, and none goes through
+conversation. A GitHub token an earlier ch-local stored under
+`COUNTINGHOUSE_GITHUB_TOKEN` or `GITHUB_TOKEN` is carried over to
+ch-access-github. At load the runtime probes once for the Actions read
 scope, failing with a clear line when it is missing.
 
 **Test accounts for packs 2 and 4 (needs Matt, later):** a Sentry
