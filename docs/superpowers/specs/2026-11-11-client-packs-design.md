@@ -243,8 +243,9 @@ is fetched.
 
 **Local mode** is a runtime configuration, not a build: `--workerThread`,
 `--moduleSandbox enforce`, `--store local` (the file-backed store that replaces
-Redis), `--stdio`, and `--loadModule` for each loaded pack's scenario with its
-parts resolved from node_modules. **One user (maintainer, 2026-11-11):** a client
+Redis), `--stdio`, and the installed modules that are on, loaded as modules
+(top-level ones listed, parts loaded while a module that is on calls them)
+from ch-local's module store. **One user (maintainer, 2026-11-11):** a client
 machine has one user who uses every hosted tool, so the runtime's
 single-identity profile applies (LM1 spec, section 4): the key and the
 scenario's `runsModules` bindings live in the process's memory, no
@@ -668,9 +669,12 @@ Credentials belong to the access module that declares them: a variable
 name in its remote declaration, bound per module to the declared URL's
 origin and entered at a terminal with `ch-local credentials add <module>`;
 the main thread holds them; no module sees one, and none goes through
-conversation. A GitHub token an earlier ch-local stored under
-`COUNTINGHOUSE_GITHUB_TOKEN` or `GITHUB_TOKEN` is carried over to
-ch-access-github. At load the runtime probes once for the Actions read
+conversation. A GitHub token an earlier release of ch-local stored (its
+version 1 credentials file, under `COUNTINGHOUSE_GITHUB_TOKEN` or
+`GITHUB_TOKEN`) is carried over to ch-access-github; a development home that
+bound one to ch-access-github 0.1.0 under `COUNTINGHOUSE_GITHUB_TOKEN` is
+told the variable changed and runs `ch-local credentials add
+ch-access-github` again. At load the runtime probes once for the Actions read
 scope, failing with a clear line when it is missing.
 
 **Test accounts for packs 2 and 4 (needs Matt, later):** a Sentry
