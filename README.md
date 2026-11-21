@@ -10,9 +10,10 @@ receipt of what was read and what was returned.
 
 - The design: [docs/superpowers/specs/2026-11-11-client-packs-design.md](docs/superpowers/specs/2026-11-11-client-packs-design.md)
 - The plan: [docs/superpowers/plans/2026-11-11-ch-packs-v1.md](docs/superpowers/plans/2026-11-11-ch-packs-v1.md)
-- The cross-package acceptance tests (plan Task 13), which install every
-  package from its own repository's tarball on Linux, macOS and Windows:
-  not written yet.
+- The cross-package acceptance test (plan Task 13), which installs every
+  package and calls the tool on Linux, macOS and Windows, runs in
+  [ch-local](https://github.com/mchen6/ch-local)'s CI
+  (`.github/workflows/acceptance.yml`).
 
 No package lives here, and nothing is published from here
 ([docs/publishing.md](docs/publishing.md)).
@@ -48,7 +49,7 @@ published to npm as `@countinghouse/<name>`.
 | `ch-step-failure-signature` | https://github.com/mchen6/ch-step-failure-signature | step: a stable signature for a failure |
 | `ch-step-dedupe` | https://github.com/mchen6/ch-step-dedupe | step: groups failures, new, flaky or recurring |
 | `ch-step-owner-hint` | https://github.com/mchen6/ch-step-owner-hint | step: who last touched the failing code, as logins |
-| `ch-step-report` | https://github.com/mchen6/ch-step-report | step: assembles the answer and its receipt |
+| `ch-step-report` | https://github.com/mchen6/ch-step-report | step: assembles the answer, with its one-sentence summary, in a fixed field order (the runtime adds the receipt) |
 
 ## Development
 
