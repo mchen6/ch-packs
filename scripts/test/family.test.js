@@ -1,5 +1,5 @@
 'use strict';
-// ch-packs is the family repository (Matt, 2026-11-11): the design, the plan
+// ch-packs is the family repository (the maintainer, 2026-11-11): the design, the plan
 // and cross-package acceptance, and no package of its own. Each package lives
 // in its own repository under mchen6.
 const test = require('node:test');
@@ -52,7 +52,7 @@ test('nothing is published from here: publishing.md points at the package reposi
   const paragraphs = doc.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p !== '' && !p.startsWith('#'));
   assert.strictEqual(paragraphs.length, 1, 'one paragraph');
   for (const name of REPOS) assert.ok(doc.includes(name) || (name.startsWith('ch-step-') && doc.includes('ch-step-*')), name);
-  assert.ok(!/before Matt says so|January 2027/.test(doc), 'the spec: each package is published as soon as it is ready');
+  assert.ok(!/before the maintainer says so|January 2027/.test(doc), 'the spec: each package is published as soon as it is ready');
 });
 
 test('the plan reads the per-repository layout', () => {
@@ -85,7 +85,7 @@ test('the spec says where a package is published from', () => {
   assert.ok(!spec.includes('`.github/workflows/publish.yml` (no token, no 2FA code; docs/publishing.md)'), 'spec decision 8');
 });
 
-// Matt and the reviewer, 2026-11-11: the usage report is the runtime's tool, ch-report is retired.
+// The maintainer and the reviewer, 2026-11-11: the usage report is the runtime's tool, ch-report is retired.
 test('the usage report is the runtime\'s countinghouse_usage_report, and ch-report is retired', () => {
   const plan = read('docs/superpowers/plans/2026-11-11-ch-packs-v1.md');
   // Task 10 stays as the record of what was built; everywhere else the tool is the runtime's.

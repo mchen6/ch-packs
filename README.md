@@ -34,7 +34,7 @@ step. The design is countinghouse's
 
 ## Where each package lives
 
-Each package has its own repository under `mchen6` (Matt, 2026-11-11) and is
+Each package has its own repository under `mchen6` (the maintainer, 2026-11-11) and is
 published to npm as `@countinghouse/<name>`.
 
 | Package | Repository | What it is |
