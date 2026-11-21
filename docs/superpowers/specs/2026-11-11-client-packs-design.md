@@ -2,9 +2,9 @@
 
 > **Design document.** It describes what is planned and decided, not what exists; what is built is stated in each package repository's README. Numbers in examples are illustrative, dates are estimates that move, and nothing here is a promise to a user.
 
-Status: APPROVED by Matt 2026-11-11 (~11:15 Pacific), with the business side's notes of 10:10 and 10:30 folded in; open items in section 14. Written for a
-builder who has not seen this conversation. Matt's decisions are marked
-"(Matt)"; everything else is the tech side's call and can be overruled.
+Status: APPROVED by the maintainer 2026-11-11 (~11:15 Pacific), with the business side's notes of 10:10 and 10:30 folded in; open items in section 14. Written for a
+builder who has not seen this conversation. The maintainer's decisions are marked
+"(the maintainer)"; everything else is the tech side's call and can be overruled.
 
 > **Superseded in part (2026-11-18).** What this design says about a pack as
 > something that loads, is configured or holds a credential is replaced by
@@ -26,14 +26,14 @@ failures, how many of the last fifty, first seen at which commit, flaky or
 new, likely owner). With the answer comes one measured line: how many log
 lines were read across how many runs, and how many reached the model. That
 line proves both selling points, data safety and token saving, with the
-developer's own numbers on first use (Matt, 2026-11-11).
+developer's own numbers on first use (the maintainer, 2026-11-11).
 
 The pack family is a set of such ready-made composite tools for the eight
 scenarios the business side ranked, built on countinghouse, open source
-under Apache-2.0 (Matt), usable from several agents and, later, from the
+under Apache-2.0 (the maintainer), usable from several agents and, later, from the
 phone.
 
-## Decisions already made (Matt, 2026-11-11 unless noted)
+## Decisions already made (the maintainer, 2026-11-11 unless noted)
 
 1. Local first, hosted later; build the whole set of packs for the common
    workflows; selling points: data does not enter the model, and saving
@@ -52,7 +52,7 @@ phone.
    assume someone who can create an API key.
 7. Apache-2.0 for the local runtime, the packs and the analysis tool; the
    hosted version and enterprise work are what is charged for (08:15).
-   Publication timing unchanged: nothing public before Matt says so, each
+   Publication timing unchanged: nothing public before the maintainer says so, each
    time; the packs repository was created private and made public on 2026-11-12.
 8. The conversation of 2026-11-11 (this design's brainstorm):
    - the receipt lives in the tool result and the agent is asked to show
@@ -85,7 +85,7 @@ phone.
 
 - A stranger with Node and a GitHub PAT installs pack 1 in Claude Code or
   Cursor and gets the moment above within five minutes. That is the
-  acceptance test for the first release. Until Matt lifts the
+  acceptance test for the first release. Until the maintainer lifts the
   publication rule, the test runs from local tarballs: `npm pack` of every
   package and of a countinghouse 8.0 build, installed by `ch-local install
   --from <dir>`; a private registry (Verdaccio) is the fallback if the
@@ -135,11 +135,11 @@ phone.
 - The business plan's content never goes into a public repository. This
   document is the tech side's own and may move to the packs repository.
 - Platform independent: Linux, macOS and Windows from the same code, with
-  no Mac available for development (Matt, 2026-11-11); see section 2.
+  no Mac available for development (the maintainer, 2026-11-11); see section 2.
 
 ## 1. Shape: one runtime, one pack family
 
-No fork (Matt). countinghouse stays the runtime and gains what the packs
+No fork (the maintainer). countinghouse stays the runtime and gains what the packs
 need as ordinary features, each a reviewed PR on its own branch:
 
 | Runtime feature | Why the packs need it | Owner | Status |
@@ -156,35 +156,35 @@ need as ordinary features, each a reviewed PR on its own branch:
 | Node floor: 22.16 with the resolve shim (section 10) | most developers never hit the floor | B, before LM1 | conditional (section 10) |
 | UL1 usage ledger (hash-chained, exportable) | "what the packs' calls replaced", durable across sessions | B | after LM1 |
 
-**One repository per package (Matt, 2026-11-11 ~17:40, reaffirmed after
+**One repository per package (the maintainer, 2026-11-11 ~17:40, reaffirmed after
 the tech side recommended one repository).** Each package lives in its own
 GitHub repository under `mchen6`, named as the package directory
 (`ch-local`, `ch-access-github`, `ch-step-redact`, `ch-step-log-clean`,
 `ch-step-error-patterns`, `ch-step-failure-signature`, `ch-step-dedupe`,
 `ch-step-owner-hint`, `ch-step-report`, `ch-pack-ci-failure-triage`, and
-`ch-report`, now retired (Matt, 2026-11-11: its code moves into countinghouse `lib/usage/`, the repository is archived and the npm name is not published); `ch-trace-report` keeps `countinghouse-trace-report`), each with
+`ch-report`, now retired (the maintainer, 2026-11-11: its code moves into countinghouse `lib/usage/`, the repository is archived and the npm name is not published); `ch-trace-report` keeps `countinghouse-trace-report`), each with
 its own three-OS CI, a trusted-publishing `publish.yml`, `test/support.js`
 in place of the shared harness, and `scripts/validate.js` for modules (the
 packed tarball is validated, since a standalone repository's node_modules
 holds the runtime's dependencies). Created 2026-11-11 from `ch-packs`
-12c29eb; public since 2026-11-12, as is `ch-packs` itself (Matt). `ch-packs` stays as the
+12c29eb; public since 2026-11-12, as is `ch-packs` itself (the maintainer). `ch-packs` stays as the
 family repository: this design, the plan, the acceptance tests (Task 13,
 from the sibling repositories' tarballs), and nothing that is published.
 The npm names are reserved now and each package is published as soon as it
-is ready (Matt, same decision; the "nothing before January 2027" rule no
+is ready (the maintainer, same decision; the "nothing before January 2027" rule no
 longer applies to the packs).
 
 The pack family's design repository is `ch-packs`. Packages live under an npm scope
-Matt owns, `@countinghouse` (Matt, 2026-11-11 10:38 for an owned scope; the name on 2026-11-11 ~17:00),
+The maintainer owns, `@countinghouse` (the maintainer, 2026-11-11 10:38 for an owned scope; the name on 2026-11-11 ~17:00),
 and keep the `ch-` prefix inside it (tech's call) so names stay
-recognisable; creating the organisation and publishing are Matt's, on his
+recognisable; creating the organisation and publishing are the maintainer's, on their
 timing. Names: `ch-local` (the launcher), `ch-access-<server>`,
 `ch-step-<name>`, `ch-pack-<scenario>`, `ch-report` (retired: the usage report is the runtime's `countinghouse_usage_report`),
 `ch-trace-report` (the analysis tool, from its own repository). It contains:
 Unscoped names cannot be protected as a family: anyone can publish a
 `ch-pack-<x>` that looks like ours, and the install pulls packages by name
 and runs them with the user's keys. An npm scope is owned; whether to use
-one (`@ch/` or similar) instead of the bare prefix is Matt's call (section
+one (`@ch/` or similar) instead of the bare prefix is the maintainer's call (section
 14). Either way `ch-local install` accepts only names from its own
 allowlist, pinned by version and integrity hash, never an arbitrary name.
 
@@ -210,7 +210,7 @@ reviewed like any PR.
 
 ## 2. The launcher and local mode
 
-**One command, every pack** (Matt, 2026-11-12: adding packs after the first
+**One command, every pack** (the maintainer, 2026-11-12: adding packs after the first
 release must be easy; the reviewer's design). `ch-local start --stdio`, after a
 one-time `npx @countinghouse/ch-local install` (below), starts one runtime in
 local mode with every installed module that is on and has what it needs; a
@@ -308,7 +308,7 @@ reported in the launcher's output and the report ("GitHub's server changed
 Claude Code updates plugins from their marketplace (`claude plugin update`);
 Claude Desktop updates directory-listed extensions itself; Cursor, VS Code
 and Codex have none for a stdio command, so `upgrade` is the path there.
-The decision between "easy" and "automatic by default" is Matt's (section
+The decision between "easy" and "automatic by default" is the maintainer's (section
 14); this design implements "easy, opt-in automatic".
 
 **Uninstall.** `ch-local uninstall` removes the client entries
@@ -333,7 +333,7 @@ for one process; a second process on the same module data is the
 runtime's existing single-writer rule, documented, not enforced, in the
 first release.
 
-**Operating systems: platform independent by construction (Matt,
+**Operating systems: platform independent by construction (the maintainer,
 2026-11-11: no Mac development machine is available).** The pack family
 is pure JavaScript: no native module of its own, no shell script (every
 `bin` is a `.js` file), no symlink, paths only through `path` and
@@ -357,7 +357,7 @@ marked untested in the README until a Mac or Windows machine is available.
 **Agent-driven install.** In Claude Code the user can say one sentence: the
 plugin's skill instructs the agent to run the install command and to add
 the server (`claude mcp add` or the plugin's `.mcp.json`). Elsewhere the
-user pastes the snippet, which is acceptable (Matt: a little more trouble
+user pastes the snippet, which is acceptable (the maintainer: a little more trouble
 is fine).
 
 ## 3. Clients
@@ -401,8 +401,10 @@ and never appear in tools/list (anti-goal 3; the gateway lists a module's
 tools only when the module is loaded as a scenario, which is LM1's loader
 rule).
 
-**Step modules**, shared transforms: pure JSON in, JSON out, no
-permissions, no network, no file access beyond their own data directory.
+**Step modules**, shared transforms: pure JSON in, JSON out; they declare no
+permission and no network, and use no file beyond their own data directory
+(a declaration: the runtime does not yet enforce a module's lack of network,
+countinghouse's security model).
 Testable with fixtures alone, which is why they can be built before RC1.
 
 **Scenario modules**, one per pack: thin; declare `calls` to the access
@@ -556,7 +558,7 @@ stdio session, and "what happened this week" could not be answered). One
 record per call: time, MCP session id when the client sends one, pack,
 tool, server, bytes and lines in and out, duration, outcome, and the name
 (never the value) of the credential used. Exact counts; nothing estimated.
-The runtime's report reads these files (Matt, 2026-11-11: the built-in
+The runtime's report reads these files (the maintainer, 2026-11-11: the built-in
 `countinghouse_usage_report` tool and the `countinghouse-usage` command,
 LM1 spec §5), so it needs no port; UL1 later adds the hash chain and the
 export format on the same records. `countinghouse-usage` prints the report
@@ -573,7 +575,7 @@ refused. Bytes and lines only. The word "saved" does not
 appear. The description and the skill ask the agent to show it.
 
 **The report** (the runtime's `countinghouse_usage_report` tool and
-`countinghouse-usage` command, LM1 spec §5; Matt, 2026-11-11, in place of a
+`countinghouse-usage` command, LM1 spec §5; the maintainer, 2026-11-11, in place of a
 report tool of the family's own):
 
 - Layer 1, every client: from the runtime's counters (read over the
@@ -626,7 +628,7 @@ OAuth 2.1 front (section 1): the resource server part per the MCP
 authorization spec, and a minimal built-in authorization server where the
 one local user approves a client once, from the machine. Until it exists,
 Claude's phone app may already work with the `X-CH-Key` request header;
-Matt tests that once (needs-matt).
+The maintainer tests that once (needs the maintainer).
 
 ## 8. Credentials and the vendors' servers
 
@@ -663,7 +665,7 @@ credential and has the stable surface the steps need. The refresh-token
 grant stays for Gmail (pack 8). Trade-off stated in each access module's
 README: a REST surface is ours to maintain; an MCP surface is the vendor's.
 
-Order (Matt, 10:38): 1, 2, 4 (MCP remotes), then 3, 5, 6, 7 (HTTP
+Order (the maintainer, 10:38): 1, 2, 4 (MCP remotes), then 3, 5, 6, 7 (HTTP
 remotes), then 8.
 Credentials belong to the access module that declares them: a variable
 name in its remote declaration, bound per module to the declared URL's
@@ -677,11 +679,11 @@ told the variable changed and runs `ch-local credentials add
 ch-access-github` again. At load the runtime probes once for the Actions read
 scope, failing with a clear line when it is missing.
 
-**Test accounts for packs 2 and 4 (needs Matt, later):** a Sentry
+**Test accounts for packs 2 and 4 (needs the maintainer, later):** a Sentry
 organisation (free tier) with one project that a tiny app feeds errors
 into; a Linear workspace (free); Datadog (trial) or Grafana Cloud (free)
 with one data source; a PagerDuty developer account. We generate the data;
-Matt creates the accounts under his own identity when pack 2 starts.
+The maintainer creates the accounts under their own identity when pack 2 starts.
 
 ## 9. The closed loop and fairness
 
@@ -716,7 +718,7 @@ sandboxed validator's reads of `/app/package.json` and `/app/api.json`
 returning ENOENT, is in the broker's virtual-path handling, which is built
 on the same hooks, and is probably the same cause but is not proven.
 
-**Decision (conditional, Matt).** Floor 22.16 (the first 22 with
+**Decision (conditional, the maintainer).** Floor 22.16 (the first 22 with
 `registerHooks`) with a resolve shim, on condition that the shim makes all
 five pass. The shim: on Node below 24.15 only, wrap the CommonJS resolver
 (`Module._resolveFilename`) so that a resolve from module code runs the
@@ -731,7 +733,7 @@ latest 22, 24.0, 24.14 and 24.15+. README: "a compatibility shim is used
 below 24.15; multi-tenant hosting of third-party modules should run
 24.15+ with the native hook". A dated note raises the floor to 24 when
 Node 22 reaches end of life (2027-04-30). If the validator case survives
-the shim, the floor question returns to Matt.
+the shim, the floor question returns to the maintainer.
 
 ## 11. Security and privacy rules for the family
 
@@ -787,16 +789,16 @@ After the first release (decided, not built):
   `access-github` the day RC1-min merges → `pack-ci-failure-triage` →
   the launcher and the Claude Code plugin with B → the closed loop.
 - First installable: a Claude Code plugin and a Cursor snippet with pack 1
-  and the receipt, after R2-1's module-facing part lands (Matt, 2026-11-12:
-  no raw key reaches a module first), earlier aimed at 11-25; the `.mcpb` a few days after Matt's
+  and the receipt, after R2-1's module-facing part lands (the maintainer, 2026-11-12:
+  no raw key reaches a module first), earlier aimed at 11-25; the `.mcpb` a few days after the maintainer's
   probe result; packs 2 and 4 by early December; the phone route after
   the OAuth front.
 
-## 14. Needs Matt
+## 14. Needs the maintainer
 
 1. Approve this design.
 2. Create the private repository for the pack family (or authorise its
-   creation), and reserve the npm scope and names from his own account.
+   creation), and reserve the npm scope and names from their own account.
 3. (Deferred: no Mac available.) The Node probe bundle waits for a Mac or
    Windows machine; Electron 44's Node 24.18+ makes it a confirmation, not
    a blocker.
@@ -808,11 +810,11 @@ After the first release (decided, not built):
 8. ~~npm scope~~: decided 10:38, an owned scope; named `@countinghouse` on
    2026-11-11 ~17:00. Releases publish by npm trusted publishing from
    each package repository's `.github/workflows/publish.yml` (no token, no 2FA code; that repository's README);
-   Matt creates the organisation, does each package's one manual first
-   publish and configures its trusted publisher, on his timing. The `countinghouse` package on npm (6.1.0) is his
+   The maintainer creates the organisation, does each package's one manual first
+   publish and configures its trusted publisher, on their timing. The `countinghouse` package on npm (6.1.0) is his
    account (maintainer `out4b <seeds.c@gmail.com>`, checked 2026-11-11),
    so that name is safe; an 8.0 release with RC1 and LM1 must be published
-   before `ch-local install` can work from npm, on his timing.
+   before `ch-local install` can work from npm, on their timing.
 7. ~~Token figures~~: decided 10:37, an approximate token column in the
    report only (command line, export, callable tool), labelled as an
    estimate naming its method (UTF-8 bytes / 4 in v1), beside the exact
