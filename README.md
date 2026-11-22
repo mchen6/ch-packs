@@ -18,6 +18,10 @@ receipt of what was read and what was returned.
 No package lives here, and nothing is published from here
 ([docs/publishing.md](docs/publishing.md)).
 
+To check on your own machine what the packs reach, store and record (the one
+remote host, the triage cache, the usage records), see ch-local's
+[Verify it yourself](https://github.com/mchen6/ch-local#verify-it-yourself).
+
 ## Packs and modules
 
 A pack is an install list: a named list of related modules that are
