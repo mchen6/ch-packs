@@ -11,8 +11,8 @@ receipt of what was read and what was returned.
 - The design: [docs/superpowers/specs/2026-11-11-client-packs-design.md](docs/superpowers/specs/2026-11-11-client-packs-design.md)
 - The plan: [docs/superpowers/plans/2026-11-11-ch-packs-v1.md](docs/superpowers/plans/2026-11-11-ch-packs-v1.md)
 - The cross-package acceptance test (plan Task 13), which installs every
-  package and calls the tool against a recorded GitHub stand-in on Linux,
-  macOS and Windows, runs in
+  package and calls the tool from a scripted MCP client, against a recorded
+  GitHub stand-in, on Linux, macOS and Windows, runs in
   [ch-local](https://github.com/mchen6/ch-local)'s CI
   (`.github/workflows/acceptance.yml`).
 
